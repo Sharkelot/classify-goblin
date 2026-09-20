@@ -273,6 +273,24 @@ The checkpoint format is local (`jev_laya_config.json`, `encoder/`, `head.pt`, t
 and intentionally separate from Laya weights. No public download or GPU run is performed during
 package import or the base test suite.
 
+### Current status (2026-09-20)
+
+A checkpoint was trained on the RTX 4060 Ti (bf16, 1 warmup + 3 epochs) from the local
+typed-decisions set (1035 train / 285 validation, local + public + synthetic) with the public
+`test` split held out, and saved to `checkpoints/local-distilbert` (float16, 192-dim head).
+Held-out evaluation (400 test examples, 2000 prediction records) reports validation accuracy 0.56,
+ECE 0.0392, and deterministic-rule precedence 6/6. The advisory-only gates that have support
+pass (calibration, deterministic guard precedence); the modality/risk gates report `support=0`
+because the public test set carries no `loop_state`/`next_hand`/`high_risk_code`/`modality`
+fields, which is a data-coverage gap, not a model-quality failure. No gate authorizes execution.
+The full suite is green (58 passed, 1 skipped, 44 subtests) and the deterministic loop gate is
+backend-independent.
+
+The trained backend is deployed as the systemd user unit `jev-distilbert.service`
+(loopback-only, `Restart=on-failure`) serving `127.0.0.1:8093` with
+`JEV_DISTILBERT_MODEL_PATH=checkpoints/local-distilbert` and `JEV_DISTILBERT_DEVICE=cuda`.
+The old Laya sidecar on `127.0.0.1:8091` (`laya-loop-gate.service`) is untouched.
+
 ## Bounds and failures
 
 - Requests: 64 KiB, depth 16, 1–32 questions, question/option names up to 128 characters,
