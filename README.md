@@ -37,7 +37,7 @@ not an Internet-facing production service.
 
 ## Wire contract and client
 
-`POST /v1/systemone` accepts `state`, `questions`, and optional `model`. State may be a string,
+`POST /v1/systemone` accepts `state`, `questions`, and required `model`. State may be a string,
 object, or list containing JSON values. Each question keeps its caller-supplied name.
 
 | Type | Input | Answer |
@@ -77,7 +77,38 @@ with TypeSafeClient(timeout=5, retries=2) as client:
 `systemOne` is an alias of `system_one` with the same keyword arguments. Builders return
 plain dictionaries; results are dictionaries with convenience attribute access. Use bracket
 access for keys colliding with dictionary methods. This is a small independent client under
-`jev_laya_free`, not an import-compatible replacement for `typesafe_sdk`.
+`jev_laya_free`. A bundled `typesafe_sdk` shim also re-exports `Choice`, `Noul`, `Score`,
+`TypeSafeClient`, `AsyncTypeSafeClient`, `ClientError`, and `ValidationError`. It supports the
+official quickstart import/call shape but is independent code, not the official distribution.
+Use a separate environment from the official `typesafe-sdk`: both provide the same import
+package and must not be co-installed.
+
+Responses expose `answers` and grouped `choices`, `scores`, and `nouls` mappings of question
+names to answer objects. For example, `response.choices["route"].choice`. Grouped views are
+computed properties and do not add fields to the underlying response dictionary or wire JSON.
+
+```python
+from typesafe_sdk import AsyncTypeSafeClient, Noul
+
+async def inspect():
+    async with AsyncTypeSafeClient() as client:
+        response = await client.system_one(
+            state={"summary": "synthetic evidence"},
+            questions={"ready": Noul(instructions="Is the evidence complete?")},
+        )
+    return response.nouls["ready"].noul
+```
+
+The async facade runs the same local transport in `asyncio.to_thread`, preserving validation,
+retries and timeouts without blocking the event loop. Cancelling the coroutine or leaving the
+context does not cancel an in-flight worker/socket operation. No persistent HTTP session is held.
+
+Client configuration precedence: explicit `base_url`, then `TYPESAFE_BASE_URL`, then
+`http://127.0.0.1:8093`; explicit `api_key`, then `JEV_LOCAL_API_KEY`, then `TYPESAFE_API_KEY`.
+Environment URLs still must be loopback HTTP. The server itself continues to use only
+`JEV_LOCAL_API_KEY`; compatibility fallbacks are client-side. The client always supplies its
+explicit `local-default` model default; `TYPESAFE_DEFAULT_MODEL` is intentionally ignored.
+An explicit hosted model such as `jev-latest` receives an error, never a local substitution.
 
 The client accepts only loopback HTTP origins, ignores proxy environment settings, refuses
 redirects, and validates response types, names, distributions, scores and usage. It raises
@@ -162,17 +193,18 @@ Checked against official documentation on 2026-09-20:
 [Choice](https://docs.typesafe.ai/primitives/choice),
 [Score](https://docs.typesafe.ai/primitives/score), and
 [Noul](https://docs.typesafe.ai/primitives/noul).
-No hosted requests or official SDK interoperability tests were performed.
+No hosted requests or interoperability tests using the official SDK distribution were performed.
+The local shim is tested against the published synchronous and asynchronous quickstart shapes.
 
 The canonical reference specifies Choice `criteria`; `options` is an intentional local alias
-for callers needing that shape. The official API marks `model` required; this service makes it
-optional with `local-default`. `request_id` is a local extension, absent from the inspected
+for callers needing that shape. Raw HTTP requires `model`, as the official API does; local clients supply
+`local-default` when no model argument is provided. `request_id` is a local extension, absent from the inspected
 response schema. The reference accepts structured Score criteria but describes legend values
 as strings; compact JSON serialization is our explicit resolution. The official minimum Choice
 cardinality and maximum question count are not fully specified there; local bounds above are
 implementation policy. Confidence calibration/formula, performance, context capacity, prediction
-quality, error body details, model discovery, streaming, async clients, hosted authentication,
-and all official SDK behavior are outside the compatibility claim.
+quality, error body details, model discovery, streaming, hosted authentication,
+and official SDK features beyond the shim subset are outside the compatibility claim.
 
 ## Offline checks
 
@@ -185,3 +217,21 @@ PYTHONPATH=src python3 examples/workflow.py
 Tests create ephemeral loopback servers and use synthetic data, the rules backend, or mocks.
 They exercise schemas, typed roundtrips, auth, failures, retries, Laya translation, and deterministic
 safety precedence. No private traces, real model weights, hosted calls, or running gateways are needed.
+
+
+### Compatibility matrix
+
+| Surface | Local behavior | Boundary |
+| --- | --- | --- |
+| HTTP request | Required model/state/questions; all questions require instructions | Local model IDs only |
+| Choice | Canonical criteria map plus options/list aliases | Aliases extend the documented reference |
+| Score / Noul | Ordered levels / optional yes-no criteria | Local inference and calibration |
+| HTTP response | model/answers/usage; UUID request_id | request_id is a local extension |
+| Sync SDK | typesafe_sdk imports, context manager, system_one/systemOne | Builders are dictionaries, not official SDK model classes |
+| Async SDK | AsyncTypeSafeClient, async context manager, await system_one/systemOne | Thread-backed transport; cancellation cannot stop inference |
+| Response access | answers plus grouped choices/scores/nouls; mapping access | Views contain typed answer dictionaries with attribute access |
+| Environment | TYPESAFE_BASE_URL and TYPESAFE_API_KEY fallbacks | Loopback enforced; local-default remains explicit |
+
+The added SDK checks follow the [official Python quickstart shapes](https://docs.typesafe.ai/sdk/python)
+using synthetic inputs against an ephemeral local rules server. They check both clients, grouped
+views, environment precedence, required wire model, and hosted-model rejection.

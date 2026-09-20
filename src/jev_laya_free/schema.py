@@ -63,10 +63,10 @@ def description(value, nullable=False):
 def request(body):
     require(isinstance(body, dict), 'request must be an object')
     require(set(body) <= {'model', 'state', 'questions'}, 'unknown request field')
-    require({'state', 'questions'} <= set(body), 'state and questions required')
+    require({'model', 'state', 'questions'} <= set(body), 'model, state and questions required')
     require(len(dumps(body).encode()) <= MAX_BYTES, 'request exceeds 65536 bytes')
     require(isinstance(body['state'], (str, dict, list)), 'state must be string, object, or array')
-    model = body.get('model', 'local-default')
+    model = body['model']
     require(isinstance(model, str) and 0 < len(model) <= 128, 'invalid model')
     questions = body['questions']
     require(isinstance(questions, dict) and 1 <= len(questions) <= 32, 'require 1..32 questions')

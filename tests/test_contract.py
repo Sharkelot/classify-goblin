@@ -45,26 +45,26 @@ def post(server, payload, headers=None, path='/v1/systemone'):
 class SchemaTests(unittest.TestCase):
     def test_arbitrary_state_and_structured_descriptions(self):
         for state in ('hello', {}, [1, True, None, {'data': [3.5]}]):
-            body = schema.request({'state': state, 'questions': QUESTIONS})
+            body = schema.request({'model': 'local-default', 'state': state, 'questions': QUESTIONS})
             self.assertEqual(body['state'], state)
         questions = {'x': Choice(instructions={'question': ['where']}, criteria={'a': None, 'b': {'details': [1]}}),
                      's': Score(instructions=['rate'], criteria=[{'a': 'low'}, ['high']]),
                      'n': Noul(instructions='yes?', criteria={'true': ['yes']})}
-        req = schema.request({'state': [], 'questions': questions})
+        req = schema.request({'model': 'local-default', 'state': [], 'questions': questions})
         raw = RulesBackend().predict(req['state'], req['questions'])
         schema.answers(raw['answers'], req['questions'])
 
     def test_choice_aliases(self):
         for key in ('criteria', 'options'):
             for value in (['a', 'b'], {'a': None, 'b': 'B'}):
-                body = schema.request({'state': '', 'questions': {'q': {'type': 'choice', 'instructions': 'pick', key: value}}})
+                body = schema.request({'model': 'local-default', 'state': '', 'questions': {'q': {'type': 'choice', 'instructions': 'pick', key: value}}})
                 self.assertEqual(list(body['questions']['q']['criteria']), ['a', 'b'])
 
     def test_invalid_input(self):
-        bad = [None, [], {}, {'state': True, 'questions': QUESTIONS},
-               {'state': {}, 'questions': {}}, {'state': {}, 'questions': QUESTIONS, 'extra': 1},
-               {'state': float('nan'), 'questions': QUESTIONS},
-               {'state': 'x'*65536, 'questions': QUESTIONS}]
+        bad = [None, [], {}, {'model': 'local-default', 'state': True, 'questions': QUESTIONS},
+               {'model': 'local-default', 'state': {}, 'questions': {}}, {'model': 'local-default', 'state': {}, 'questions': QUESTIONS, 'extra': 1},
+               {'model': 'local-default', 'state': float('nan'), 'questions': QUESTIONS},
+               {'model': 'local-default', 'state': 'x'*65536, 'questions': QUESTIONS}]
         bad_q = [{'type': 'freeform', 'instructions': 'x'},
                  {'type': 'noul'}, {'type': 'noul', 'instructions': 'x', 'options': ['a']},
                  {'type': 'noul', 'instructions': 'x', 'criteria': {'maybe': 'x'}},
@@ -73,7 +73,7 @@ class SchemaTests(unittest.TestCase):
                  {'type': 'score', 'instructions': 'x', 'criteria': ['one']},
                  {'type': 'score', 'instructions': 'x', 'criteria': ['x']*11},
                  {'type': 'choice', 'instructions': 'x', 'options': [True]}]
-        bad += [{'state': {}, 'questions': {'q': q}} for q in bad_q]
+        bad += [{'model': 'local-default', 'state': {}, 'questions': {'q': q}} for q in bad_q]
         for payload in bad:
             with self.subTest(payload=str(payload)[:100]), self.assertRaises(ValidationError):
                 schema.request(payload)
@@ -84,7 +84,7 @@ class SchemaTests(unittest.TestCase):
                 schema.loads(raw)
 
     def test_answer_validation(self):
-        questions = schema.request({'state': '', 'questions': QUESTIONS})['questions']
+        questions = schema.request({'model': 'local-default', 'state': '', 'questions': QUESTIONS})['questions']
         good = RulesBackend().predict('', questions)['answers']
         mutations = [lambda x: x.pop('review'),
                      lambda x: x['route'].update(choice='unknown'),
@@ -115,7 +115,7 @@ class HTTPTests(unittest.TestCase):
 
     def test_auth_and_errors(self):
         with running(token='test-key') as (server, url):
-            body = schema.dumps({'state': '', 'questions': QUESTIONS})
+            body = schema.dumps({'model': 'local-default', 'state': '', 'questions': QUESTIONS})
             self.assertEqual(post(server, body)[0], 401)
             with self.assertRaises(ClientError) as cm:
                 TypeSafeClient(base_url=url, api_key='wrong').system_one(state='', questions=QUESTIONS)
@@ -155,7 +155,7 @@ class HTTPTests(unittest.TestCase):
             self.assertEqual(backend.calls, 2)
             server.inference_lock.acquire()
             try:
-                status, body = post(server, schema.dumps({'state': '', 'questions': QUESTIONS}))
+                status, body = post(server, schema.dumps({'model': 'local-default', 'state': '', 'questions': QUESTIONS}))
                 self.assertEqual(status, 529)
                 self.assertNotIn('answers', body)
             finally:
@@ -198,7 +198,7 @@ class HTTPTests(unittest.TestCase):
 class BackendWorkflowTests(unittest.TestCase):
     def test_rules_repeatable_and_question_name_independent(self):
         backend = RulesBackend()
-        q = schema.request({'state': '', 'questions': QUESTIONS})['questions']
+        q = schema.request({'model': 'local-default', 'state': '', 'questions': QUESTIONS})['questions']
         self.assertEqual(backend.predict('code', q), backend.predict('code', q))
         self.assertEqual(backend.predict('code', {'a': q['route']})['answers']['a'],
                          backend.predict('code', {'b': q['route']})['answers']['b'])
@@ -218,7 +218,7 @@ class BackendWorkflowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as path, patch.dict('sys.modules', {'laya': fake}), patch.dict(os.environ, {}, clear=False):
             backend = LayaBackend(path)
             self.assertEqual(os.environ['HF_HUB_OFFLINE'], '1')
-            q = schema.request({'state': '', 'questions': QUESTIONS})['questions']
+            q = schema.request({'model': 'local-default', 'state': '', 'questions': QUESTIONS})['questions']
             raw = backend.predict('', q)
             self.assertEqual(set(raw['answers']['review']), {'type', 'noul'})
             q['route']['criteria'] = dict.fromkeys(map(str, range(9)))

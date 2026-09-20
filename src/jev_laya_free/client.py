@@ -1,4 +1,5 @@
 """Independent client; this module is not the official typesafe_sdk package."""
+import asyncio
 import os
 import time
 from http.client import HTTPException
@@ -45,6 +46,25 @@ def Noul(*, instructions, criteria=None):
     return {'type': 'noul', 'instructions': instructions, **({'criteria': criteria} if criteria is not None else {})}
 
 
+class Response(Record):
+    """Wire mapping plus grouped SDK views; views do not add wire fields."""
+    def _group(self, kind):
+        return Record({name: answer for name, answer in self['answers'].items()
+                       if answer['type'] == kind})
+
+    @property
+    def choices(self):
+        return self._group('choice')
+
+    @property
+    def scores(self):
+        return self._group('score')
+
+    @property
+    def nouls(self):
+        return self._group('noul')
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -52,8 +72,9 @@ class NoRedirect(HTTPRedirectHandler):
 
 class TypeSafeClient:
     """Familiar method names, independent implementation and localhost-only transport."""
-    def __init__(self, base_url='http://127.0.0.1:8093', api_key=None,
+    def __init__(self, base_url=None, api_key=None,
                  model='local-default', timeout=5.0, retries=2):
+        base_url = base_url if base_url is not None else os.environ.get('TYPESAFE_BASE_URL', 'http://127.0.0.1:8093')
         parsed = urlsplit(base_url)
         schema.require(parsed.scheme == 'http' and parsed.hostname in ('127.0.0.1', 'localhost')
                        and parsed.path in ('', '/') and not parsed.query and not parsed.fragment
@@ -62,7 +83,7 @@ class TypeSafeClient:
         schema.require(type(timeout) in (int, float) and 0 < timeout <= 60, 'timeout must be 0..60 seconds')
         schema.require(type(retries) is int and 0 <= retries <= 5, 'retries must be 0..5')
         self.url = base_url.rstrip('/') + '/v1/systemone'
-        self.api_key = api_key if api_key is not None else os.environ.get('JEV_LOCAL_API_KEY')
+        self.api_key = api_key if api_key is not None else os.environ.get('JEV_LOCAL_API_KEY', os.environ.get('TYPESAFE_API_KEY'))
         schema.require(self.api_key is None or (isinstance(self.api_key, str) and self.api_key.isascii()
                        and all(33 <= ord(c) <= 126 for c in self.api_key) and bool(self.api_key)), 'invalid api_key')
         self.model, self.timeout, self.retries = model, timeout, retries
@@ -80,7 +101,7 @@ class TypeSafeClient:
                     schema.require(reply.headers.get_content_type() == 'application/json', 'invalid response content type')
                     data = reply.read(schema.MAX_RESPONSE_BYTES + 1)
                     schema.require(len(data) <= schema.MAX_RESPONSE_BYTES, 'response too large')
-                return record(schema.response(schema.loads(data), body['questions']))
+                return Response(record(schema.response(schema.loads(data), body['questions'])))
             except HTTPError as exc:
                 status = exc.code
                 exc.close()
@@ -100,4 +121,25 @@ class TypeSafeClient:
         return self
 
     def __exit__(self, *args):
+        return False
+
+
+class AsyncTypeSafeClient:
+    """Async facade over the same bounded local transport, off the event loop.
+
+    Cancellation stops awaiting but cannot interrupt the worker's socket operation.
+    """
+    def __init__(self, *args, **kwargs):
+        self._client = TypeSafeClient(*args, **kwargs)
+
+    async def system_one(self, *, state, questions, model=None):
+        return await asyncio.to_thread(self._client.system_one,
+                                       state=state, questions=questions, model=model)
+
+    systemOne = system_one
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
         return False
