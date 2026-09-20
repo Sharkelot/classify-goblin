@@ -104,7 +104,8 @@ def evaluate_predictions(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]
     training run and compared with the existing Laya baseline without importing a model.
     """
 
-    records = list(records)
+    from .acceptance import annotations
+    records = [annotations(record) for record in records]
     by_kind: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for record in records:
         by_kind[str(record.get("kind", "unknown"))].append(record)
@@ -155,7 +156,7 @@ def compare_reports(student: Mapping[str, Any], baseline: Mapping[str, Any]) -> 
 def evaluate_workflow_precedence() -> dict[str, Any]:
     """Verify that deterministic guard precedence is intact for representative fixtures."""
 
-    from ..workflow import guard, route
+    from ..workflow import guard, route, decide
 
     cases = [
         ({"terminal": True, "same_action_streak": 9}, "terminal"),
@@ -166,6 +167,16 @@ def evaluate_workflow_precedence() -> dict[str, Any]:
         ({"same_action_streak": 3, "artifact_delta": True}, "allow"),
     ]
     results = [{"state": state, "expected": expected, "actual": guard(state)["decision"]} for state, expected in cases]
+    class AdversarialClient:
+        def system_one(self, **kwargs):
+            return {"answers": {"next_hand": "stop", "authorize_write": True, "retry": True}}
+
+    for state, expected in cases + [({"modality": "code"}, "allow")]:
+        baseline = decide(state)
+        actual = decide(state, AdversarialClient())
+        results.append({"state": state, "expected": True,
+                        "actual": actual["gate"] == baseline["gate"] and actual["route"] == baseline["route"]
+                        and actual["advisory"]["authoritative"] is False})
     passed = sum(result["expected"] == result["actual"] for result in results)
     evidence_cases = [
         ({"modality": "code"}, "inspect_code"),

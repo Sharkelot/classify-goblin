@@ -142,9 +142,10 @@ def _prediction_records(model, tokenizer, examples: list[DecisionExample], *, ma
                 "predicted_index": predicted,
                 "metadata": row.get("metadata", {}),
             }
-            if question_kind == "noul" and row.get("metadata", {}).get("repeat_without_progress") is not None:
-                record["expected_repeat"] = bool(row["metadata"].get("repeat_without_progress"))
-                record["predicted_repeat"] = predicted == 1
+            from .acceptance import annotations
+            record["labels"] = list(row["question"].get("criteria", {})) if question_kind == "choice" else ["false", "true"]
+            record["state"] = row["state"]
+            record = annotations(record)
             records.append(record)
     return records
 

@@ -16,6 +16,7 @@ from .data import (
     write_jsonl,
 )
 from .engine import one_batch_smoke, tiny_random_smoke, train
+from .acceptance import AcceptanceConfig, evaluate_acceptance
 from .metrics import compare_reports, evaluate_predictions, evaluate_workflow_precedence
 
 
@@ -66,6 +67,8 @@ def build_parser():
     evaluate.add_argument("--predictions", default=None, help="JSONL records emitted by a model evaluator")
     evaluate.add_argument("--baseline", default=None, help="JSON report from current Laya for advisory deltas")
     evaluate.add_argument("--output", default=None)
+    evaluate.add_argument("--acceptance-config", help="JSON object of AcceptanceConfig thresholds")
+    evaluate.add_argument("--require-acceptance", action="store_true", help="exit 1 when a required gate fails")
 
     return parser
 
@@ -119,8 +122,10 @@ def main(argv=None) -> int:
             records = []
             if args.predictions:
                 records = [json.loads(line) for line in Path(args.predictions).read_text(encoding="utf-8").splitlines() if line.strip()]
-            prediction_report = evaluate_predictions(records)
+            prediction_report = evaluate_predictions([r for r in records if "probabilities" in r and "label_index" in r])
+            config = AcceptanceConfig(**json.loads(Path(args.acceptance_config).read_text())) if args.acceptance_config else AcceptanceConfig()
             report = {"predictions": prediction_report, "deterministic_precedence": evaluate_workflow_precedence()}
+            report["acceptance"] = evaluate_acceptance(records, config)
             if args.baseline:
                 report["comparison"] = compare_reports(prediction_report, json.loads(Path(args.baseline).read_text(encoding="utf-8")))
             text = json.dumps(report, indent=2, sort_keys=True)
@@ -128,7 +133,7 @@ def main(argv=None) -> int:
                 Path(args.output).parent.mkdir(parents=True, exist_ok=True)
                 Path(args.output).write_text(text + "\n", encoding="utf-8")
             print(text)
-            return 0
+            return 1 if args.require_acceptance and not report["acceptance"]["passed"] else 0
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

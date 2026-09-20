@@ -374,3 +374,48 @@ never serialized by the broker or server.
 Offline multimodal dataset preparation and source exclusions are documented in
 [docs/DATASETS.md](docs/DATASETS.md). The converter records provenance, preserves
 causal episode splits, and keeps local traces out of the default public build.
+### Offline multimodal acceptance
+
+`python -m jev_laya_free.training evaluate --predictions predictions.jsonl
+--output acceptance.json --require-acceptance` emits the existing metrics plus an
+`acceptance` report and exits 1 if any required gate fails. Without
+`--require-acceptance`, the existing reporting exit behavior is preserved.
+`--acceptance-config thresholds.json` accepts fields from
+`training.acceptance.AcceptanceConfig`; the resolved configuration is included in
+the report. This is a bounded offline capability check, never execution authority.
+The deterministic guard remains authoritative; model outputs cannot authorize
+writes, retries, or stops.
+
+Inputs may be existing typed prediction records, with `question_name`, `labels`
+(in probability order), `label_index`, `probabilities`, and `modality`, or paired
+JSON rows such as:
+
+```json
+{"modality":"pdf","gold":{"loop_state":"repeat_without_progress","next_hand":"render_pdf_page"},"predictions":{"loop_state":"progress","next_hand":"extract_pdf_text"}}
+```
+
+Hermes `gold.loop_state` and normalized typed loop-state targets are authoritative
+for repeat labels. Unrelated boolean questions are not repeat predictions.
+Explicit legacy `expected_repeat`/`predicted_repeat` and
+`expected_hand`/`predicted_hand` remain supported. High-risk code requires explicit
+`gold.high_risk_code`/`predictions.high_risk_code` booleans (or
+`expected_high_risk_code`/`predicted_high_risk_code`); review status alone does not
+establish code risk. Modality can also come from metadata or state.
+
+Defaults require guard precedence 100%, repeat and high-risk code recall .95 /
+precision .90, next-hand macro-F1 .85 separately for code/PDF/image, PDF extract
+versus render macro-F1 .90, image inspection recall .95, and top-label ECE <= .10
+(ten equal-width bins). These are explicit initial policy thresholds, not measured
+model claims. Each required metric needs at least `min_support=1`; binary recall
+needs positive support. Missing evidence fails rather than passing vacuously.
+Macro-F1 includes observed gold/predicted labels; the PDF gate always includes
+both extract and render. Confusion matrices use gold rows and prediction columns.
+Calibration requires typed probability records and reports pooled ECE, NLL, and
+Brier score. Do not pool incompatible label spaces when interpreting its numeric
+index confusion matrix.
+
+Optional `latency_ms` and `vram_mb` samples are reported without a gate by default.
+Set `max_latency_p95_ms` and `max_vram_mb` to require measured nearest-rank p95
+latency and peak sampled VRAM. Measurements must be provided by the caller;
+this harness does not benchmark hardware or import a model. Keep samples in
+consistent units and avoid duplicating per-request measurements across questions.
