@@ -339,3 +339,35 @@ safety precedence. No private traces, real model weights, hosted calls, or runni
 The added SDK checks follow the [official Python quickstart shapes](https://docs.typesafe.ai/sdk/python)
 using synthetic inputs against an ephemeral local rules server. They check both clients, grouped
 views, environment precedence, required wire model, and hosted-model rejection.
+
+### Local artifact reference contract
+
+`system_one` / `systemOne` on both clients accept optional `artifacts`. Omitting
+it preserves the existing wire request. Each reference contains `id` (opaque
+ASCII letters, digits, underscore or hyphen), `kind` (`image`, `pdf`, `code`, or
+`text`), `mime`, a 64-character hexadecimal `sha256`, and `path` relative to a
+configured artifact root. Inline data and unknown fields are rejected.
+
+Set `JEV_ARTIFACT_ROOTS` to an OS-path-separator-delimited list of absolute local
+roots. The broker searches roots in order, rejects symlinks and traversal, reads
+only regular files, and verifies SHA-256. It permits at most 8 references and
+64 MiB per reference. Supported MIME values are explicitly listed in
+`jev_laya_free.artifacts.MIMES`; MIME declarations are not content sniffing.
+
+PDF references may select up to 4 distinct one-based `pages` (default `[1]`).
+Image/PDF `crops` map page strings to at most 4 normalized `[x0,y0,x1,y1]` boxes;
+images use key `"1"`, PDFs use selected page keys. Boxes must have positive area
+within `[0,1]`. The PDF preprocessing adapter must check actual document page
+counts before inference and raise `ArtifactSelectionError` for out-of-document
+selections (returned as a safe 422); decoding and model preprocessing are not implemented
+by the broker.
+
+Artifact-capable backends implement `predict_artifacts(state, questions,
+artifacts)`, receiving internal `ResolvedArtifact` objects with verified bytes
+and no paths. Existing backends remain unchanged and return 503 for nonempty
+artifact requests. Invalid references return 422; processing failures return
+503 with no fallback decision. The deterministic workflow guard remains
+unchanged and authoritative. Artifact response usage is restricted to the
+standard token counts and broker-generated artifact ids, pages, and truncation
+flags; backend usage extras are discarded. Raw bytes and filesystem paths are
+never serialized by the broker or server.

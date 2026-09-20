@@ -89,8 +89,9 @@ class TypeSafeClient:
         self.model, self.timeout, self.retries = model, timeout, retries
         self.opener = build_opener(ProxyHandler({}), NoRedirect())
 
-    def system_one(self, *, state, questions, model=None):
-        body = schema.request({'state': state, 'questions': questions, 'model': self.model if model is None else model})
+    def system_one(self, *, state, questions, model=None, artifacts=None):
+        body = schema.request({'state': state, 'questions': questions, 'model': self.model if model is None else model,
+                               **({'artifacts': artifacts} if artifacts is not None else {})})
         encoded = schema.dumps(body).encode()
         headers = {'Content-Type': 'application/json'}
         if self.api_key is not None:
@@ -132,9 +133,9 @@ class AsyncTypeSafeClient:
     def __init__(self, *args, **kwargs):
         self._client = TypeSafeClient(*args, **kwargs)
 
-    async def system_one(self, *, state, questions, model=None):
+    async def system_one(self, *, state, questions, model=None, artifacts=None):
         return await asyncio.to_thread(self._client.system_one,
-                                       state=state, questions=questions, model=model)
+                                       state=state, questions=questions, model=model, artifacts=artifacts)
 
     systemOne = system_one
 

@@ -6,6 +6,7 @@ import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import schema
+from .artifacts import ArtifactBroker, ArtifactSelectionError
 from .backends import DistilBertBackend, LayaBackend, RulesBackend
 
 
@@ -84,7 +85,10 @@ class Handler(BaseHTTPRequestHandler):
             schema.require(len(data) == length, 'incomplete body')
             body = schema.request(schema.loads(data))
             schema.require(body['model'] in ('local-default', self.server.backend.model), 'unknown local model')
-        except (schema.ValidationError, ValueError, RecursionError, UnicodeError):
+        except schema.ValidationError as exc:
+            error(422, str(exc))
+            return
+        except (ValueError, RecursionError, UnicodeError):
             error(422, 'invalid request schema or local model')
             return
         except (TimeoutError, OSError):
@@ -94,13 +98,34 @@ class Handler(BaseHTTPRequestHandler):
             error(529, 'local backend busy')
             return
         try:
-            raw = self.server.backend.predict(body['state'], body['questions'])
+            artifacts = []
+            if body.get('artifacts'):
+                try:
+                    artifacts = ArtifactBroker().resolve(body['artifacts'])
+                except schema.ValidationError as exc:
+                    error(422, str(exc))
+                    return
+            if artifacts:
+                predict = getattr(self.server.backend, 'predict_artifacts', None)
+                if predict is None:
+                    error(503, 'artifact backend unavailable')
+                    return
+                raw = predict(body['state'], body['questions'], artifacts)
+                # Only broker metadata and standard token counts may cross the wire.
+                usage = raw.get('usage', {})
+                raw = {**raw, 'usage': {key: usage.get(key) for key in ('input_tokens', 'output_tokens')}}
+                raw['usage']['artifacts'] = [a.usage() for a in artifacts]
+            else:
+                raw = self.server.backend.predict(body['state'], body['questions'])
             result = {'model': self.server.backend.model,
                       'answers': schema.answers(raw.get('answers'), body['questions']),
                       'usage': raw.get('usage'), 'request_id': request_id}
             schema.response(result, body['questions'])
+        except ArtifactSelectionError:
+            error(422, 'invalid artifact page or crop selection')
+            return
         except schema.ValidationError:
-            error(502, 'backend rejected request or returned invalid output')
+            error(503 if body.get('artifacts') else 502, 'backend rejected request or returned invalid output')
             return
         except Exception:
             error(503, 'local backend unavailable')
