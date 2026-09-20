@@ -181,7 +181,8 @@ def normalize_row(row: Mapping[str, Any], *, source: str, ordinal: int) -> Decis
     safe_group = str(_safe_local(group, key="group"))
     metadata = {
         "source": source,
-        "repeat_without_progress": bool(row.get("repeat_without_progress", False)),
+        "repeat_without_progress": gold_raw.get("loop_state") == "repeat_without_progress",
+        "loop_state": gold_raw.get("loop_state"),
     }
     if isinstance(row.get("metadata"), dict):
         for key in ("task_id", "workflow", "expected_gate", "modality"):
@@ -302,10 +303,7 @@ def split_examples(examples: Iterable[DecisionExample], validation_fraction: flo
         digest = hashlib.sha256(example.group.encode("utf-8")).digest()
         bucket = int.from_bytes(digest[:8], "big") / 2**64
         (validation if bucket < validation_fraction else train).append(example)
-    if not train and validation:
-        train.append(validation.pop())
-    if not validation and len(train) > 1:
-        validation.append(train.pop())
+    # Empty partitions are valid for small samples; never move individual episode rows.
     return train, validation
 
 

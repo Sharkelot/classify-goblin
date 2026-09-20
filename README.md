@@ -371,3 +371,6 @@ unchanged and authoritative. Artifact response usage is restricted to the
 standard token counts and broker-generated artifact ids, pages, and truncation
 flags; backend usage extras are discarded. Raw bytes and filesystem paths are
 never serialized by the broker or server.
+Offline multimodal dataset preparation and source exclusions are documented in
+[docs/DATASETS.md](docs/DATASETS.md). The converter records provenance, preserves
+causal episode splits, and keeps local traces out of the default public build.

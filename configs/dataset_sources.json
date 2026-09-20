@@ -1,0 +1,106 @@
+{
+  "sources": [
+    {
+      "id": "agenthazard",
+      "adapter": "hazard",
+      "glob": "agent-hazard/benchmark_package/*.json",
+      "policy": "public",
+      "license": "CC-BY-4.0",
+      "license_file": "agent-hazard/README.md",
+      "license_marker": "license: cc-by-4.0",
+      "attribution": "AgentHazard dataset authors; agent-hazard/README.md",
+      "restrictions": "Preserve official train/val/test; no hidden labels or inferred loop labels. Parsed annotations are CC-BY-4.0; benchmark code is MIT and upstream SWE-smith/SWE-bench retain original terms."
+    },
+    {
+      "id": "eto",
+      "adapter": "eto",
+      "glob": "eto-sft-trajectory/data/*_sft.json",
+      "policy": "public",
+      "license": "Apache-2.0",
+      "license_file": "eto-sft-trajectory/README.md",
+      "license_marker": "license: apache-2.0",
+      "attribution": "Yifan Song et al., Expert Trajectories for ETO",
+      "restrictions": "Derived observable action/observation pairs only; no Thought content. Upstream environments and assets retain their terms; no images redistributed."
+    },
+    {
+      "id": "hermes",
+      "adapter": "hermes",
+      "glob": "",
+      "policy": "local-only",
+      "license": "local-only",
+      "restrictions": "Private board events; never publish converted rows, reports, or checkpoints without separate review."
+    },
+    {
+      "id": "sentinel",
+      "adapter": "manifest-only",
+      "glob": "agent-trajectory-sentinel/data/*.parquet",
+      "policy": "excluded",
+      "license": "mixed",
+      "restrictions": "Apache code/format does not license all outputs; Qwen subset not yet provenance-verified. Llama/Gemini and ambiguous rows excluded."
+    },
+    {
+      "id": "pi",
+      "adapter": "manifest-only",
+      "glob": "pi-computer-use-sessions/*.jsonl",
+      "policy": "excluded",
+      "license": "MIT",
+      "restrictions": "Outside public license allowlist; trees, reasoning and embedded images require dedicated observable adapter. No conversion."
+    },
+    {
+      "id": "screen-spot",
+      "adapter": "manifest-only",
+      "glob": "screen-spot/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    },
+    {
+      "id": "screen-spot-pro",
+      "adapter": "manifest-only",
+      "glob": "screen-spot-pro/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    },
+    {
+      "id": "showui",
+      "adapter": "manifest-only",
+      "glob": "showui/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    },
+    {
+      "id": "gui-world",
+      "adapter": "manifest-only",
+      "glob": "gui-world/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    },
+    {
+      "id": "mind2web",
+      "adapter": "manifest-only",
+      "glob": "mind2web/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    },
+    {
+      "id": "aitw",
+      "adapter": "manifest-only",
+      "glob": "aitw/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    },
+    {
+      "id": "android-control",
+      "adapter": "manifest-only",
+      "glob": "android-control/**/*",
+      "policy": "excluded",
+      "license": "unverified",
+      "restrictions": "No local verified license/schema; gated or unclear visual sources excluded."
+    }
+  ]
+}
