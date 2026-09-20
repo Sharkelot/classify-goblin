@@ -67,3 +67,24 @@ class LayaBackend:
         raw = self.agent.predict(state, translated)
         # Strip Laya-only action metadata and Noul confidence, preserving Jev wire fields.
         return {'answers': answers(raw['answers'], questions), 'usage': raw['usage']}
+
+
+class DistilBertBackend:
+    """Opt-in local DistilBERT typed-decision backend.
+
+    The loader is deliberately lazy and has no fallback: a missing optional dependency or
+    rejected checkpoint is an explicit startup error, while the deterministic workflow guard
+    remains outside this backend.
+    """
+    model = 'local-distilbert'
+
+    def __init__(self, model_path=None, device=None):
+        from .distilbert_backend import LocalDistilBertRuntime
+        self.runtime = LocalDistilBertRuntime(model_path=model_path, device=device)
+
+    def predict(self, state, questions):
+        return self.runtime.predict(state, questions)
+
+
+# Descriptive alias for callers that want the model name to match the wire identifier.
+LocalDistilBertBackend = DistilBertBackend

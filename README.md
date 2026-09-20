@@ -169,6 +169,110 @@ passes supplied state to the local backend; it is not a credential scrubber. Inv
 state raises instead of allowing work. A client outage preserves the deterministic decision.
 This adapter does not configure Hermes, Qwen, DFlash, gateways, or any existing sidecar.
 
+## Optional local DistilBERT training
+
+The repository includes an opt-in, reproducible training path for a DistilBERT-base encoder
+(`distilbert/distilbert-base-uncased`, Apache-2.0, about 67M parameters) with a compact shared
+typed-decision head. The base install stays standard-library only. Install the separate training
+extras in the environment that will own the model cache:
+
+```bash
+python3 -m pip install -e '.[training]'
+```
+
+The code uses a maximum sequence length of 512, a 192-unit decision head, up to ten output
+labels (eight Choice options at runtime to preserve the Laya bound). Training uses soft-target cross entropy plus Brier loss and an ordinal ranked-probability
+term for Score questions. The default schedule is one frozen-encoder head-warmup epoch followed
+by three full fine-tuning epochs, AdamW, a short linear warmup, gradient clipping, and optional
+`bf16`/`fp16` autocast. These settings are CLI arguments and are practical starting points for an
+RTX 4060 Ti; they are not a performance or calibration guarantee.
+
+Download public assets with the Hugging Face CLI (the commands write only to ignored paths):
+
+```bash
+export JEV_DATA_DIR="$PWD/datasets/local"
+export JEV_MODEL_DIR="$PWD/models/local"
+mkdir -p "$JEV_DATA_DIR" "$JEV_MODEL_DIR"
+hf download LocalLLaMA/typed-decisions --type dataset --local-dir "$JEV_DATA_DIR/typed-decisions"
+hf download distilbert/distilbert-base-uncased --type model --local-dir "$JEV_MODEL_DIR/distilbert-base-uncased"
+```
+
+Alternatively let `datasets` and Transformers populate their normal cache through the preparation
+and training commands. A disconnected synthetic smoke path does not need either download:
+
+```bash
+PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+  --include-synthetic --synthetic-count 24 --output data/hybrid.jsonl \
+  --validation-output data/validation.jsonl --no-local-traces
+PYTHONPATH=src python3 -m jev_laya_free.training smoke --tiny-random --device auto
+PYTHONPATH=src python3 -m jev_laya_free.training evaluate --output reports/synthetic.json
+```
+
+For public preparation, use the dataset loader after installing the extras:
+
+```bash
+PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+  --public-dataset "$JEV_DATA_DIR/typed-decisions" --public-config all --public-split train \
+  --include-synthetic --output data/hybrid.jsonl --validation-output data/validation.jsonl
+
+# Keep the public test cases out of training; the two outputs together contain the test split.
+PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+  --public-dataset "$JEV_DATA_DIR/typed-decisions" --public-config all --public-split test \
+  --no-local-traces --output data/public-test-a.jsonl \
+  --validation-output data/public-test-b.jsonl
+```
+
+Preparation uses the default redacted Hermes path when it exists. Pass another local Hermes
+JSONL with `--local-traces`, or add `--no-local-traces` for a fully synthetic/public run:
+
+```bash
+PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+  --public-dataset LocalLLaMA/typed-decisions --local-traces \
+  /home/coreys/models/laya-sidecar/data/hermes-traces.jsonl \
+  --output data/hybrid.jsonl --validation-output data/validation.jsonl
+```
+
+Local rows are redacted and bounded during normalization, but the resulting training files can
+still contain private task context. Keep every data/output path private and ignored; no local
+trace, report, dataset, checkpoint, `safetensors`, or binary weight is part of this repository.
+The split is group-stable so rows sharing a task group do not cross the train/validation boundary.
+
+Train and evaluate a checkpoint after the data and base model are available locally:
+
+```bash
+PYTHONPATH=src python3 -m jev_laya_free.training train \
+  --data data/hybrid.jsonl --model "$JEV_MODEL_DIR/distilbert-base-uncased" \
+  --validation-data data/validation.jsonl \
+  --local-files-only --output-dir checkpoints/local-distilbert \
+  --device cuda --precision bf16 --warmup-epochs 1 --epochs 3
+PYTHONPATH=src python3 -m jev_laya_free.training evaluate \
+  --predictions reports/predictions.jsonl --output reports/evaluation.json
+```
+
+The regular `smoke` command loads the real base checkpoint and performs one forward/backward
+optimizer step. `--tiny-random` uses a one-layer random DistilBERT configuration and is the
+offline CI path; it verifies tensor shapes, the soft-target/Brier/RPS loss, and optimizer wiring,
+not model quality. The evaluator reports accuracy, NLL, Brier, ECE, RPS, temperature fitting,
+repeat-without-progress recall, evidence-route accuracy, and deterministic-rule precedence.
+
+After a checkpoint passes held-out acceptance checks, enable it explicitly:
+
+```bash
+export JEV_DISTILBERT_MODEL_PATH="$PWD/checkpoints/local-distilbert"
+export JEV_DISTILBERT_DEVICE=cuda
+PYTHONPATH=src python3 -m jev_laya_free.server --backend distilbert --port 8093
+```
+
+`distilbert` is opt-in and fail-closed: missing optional dependencies, missing local files, an
+unsupported checkpoint, or an unknown question task abort backend startup. It never replaces the
+rules backend automatically. The deterministic Hermes/Qwen workflow guard remains authoritative;
+the DistilBERT probabilities cannot authorize retries, tool calls, gateway changes, or terminal
+writes. Qwen remains the analyzer and tool user for code, PDF, and image evidence.
+
+The checkpoint format is local (`jev_laya_config.json`, `encoder/`, `head.pt`, tokenizer files)
+and intentionally separate from Laya weights. No public download or GPU run is performed during
+package import or the base test suite.
+
 ## Bounds and failures
 
 - Requests: 64 KiB, depth 16, 1–32 questions, question/option names up to 128 characters,

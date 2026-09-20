@@ -6,7 +6,7 @@ import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import schema
-from .backends import LayaBackend, RulesBackend
+from .backends import DistilBertBackend, LayaBackend, RulesBackend
 
 
 class LocalServer(ThreadingHTTPServer):
@@ -114,9 +114,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=('127.0.0.1', 'localhost'), default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8093)
-    parser.add_argument('--backend', choices=('rules', 'laya'), default='rules')
+    parser.add_argument('--backend', choices=('rules', 'laya', 'distilbert', 'local-distilbert'), default='rules')
     args = parser.parse_args()
-    backend = LayaBackend() if args.backend == 'laya' else RulesBackend()
+    if args.backend == 'laya':
+        backend = LayaBackend()
+    elif args.backend in ('distilbert', 'local-distilbert'):
+        backend = DistilBertBackend()
+    else:
+        backend = RulesBackend()
     server = LocalServer((args.host, args.port), backend, os.environ.get('JEV_LOCAL_API_KEY'))
     print(f'Local typed decisions: http://{args.host}:{server.server_port}/v1/systemone ({backend.model})', flush=True)
     try:
