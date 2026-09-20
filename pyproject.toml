@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-laya-free"
+version = "0.1.0"
+description = "Independent local typed-decision HTTP implementation with optional Laya backend"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+dependencies = []
+
+[project.scripts]
+jev-laya-free = "jev_laya_free.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

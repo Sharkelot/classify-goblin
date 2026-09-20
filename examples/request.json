@@ -1,0 +1,9 @@
+{
+  "model": "local-default",
+  "state": ["Inspect the code", {"test": "partial"}],
+  "questions": {
+    "kind": {"type": "choice", "instructions": "Evidence kind?", "options": ["code", "pdf", "image"]},
+    "quality": {"type": "score", "instructions": "Quality?", "criteria": ["missing", "partial", "complete"]},
+    "ready": {"type": "noul", "instructions": "Ready to synthesize?", "criteria": {"true": "complete", "false": "partial"}}
+  }
+}
