@@ -13,14 +13,28 @@ readme = "README.md"
 dependencies = []
 
 [project.optional-dependencies]
+# Opt-in local DistilBERT training path.
+#
+# The huggingface-hub upper bound (<1.0) is the binding constraint for the whole
+# stack: transformers 4.56.0 requires huggingface-hub>=0.34.0,<1.0 and tokenizers
+# 0.22.0 requires huggingface-hub>=0.16.4,<1.0. The intersection is >=0.34.0 and
+# <1.0. Do NOT raise huggingface-hub to 1.x until both transformers and
+# tokenizers declare a 1.x-compatible bound. See requirements-training.txt for the
+# exact verified pins and the upgrade notes.
 training = [
     "torch>=2.1",
-    "transformers>=4.40",
+    "transformers>=4.40,<4.57",
+    "huggingface-hub>=0.34.0,<1.0",
     "datasets>=2.18",
     "numpy>=1.24",
     "scikit-learn>=1.3",
     "accelerate>=0.28",
     "safetensors>=0.4",
+]
+# Test runner for the repository suite. The base package is standard-library
+# only; the calibration end-to-end test additionally needs the [training] stack.
+test = [
+    "pytest>=8.0",
 ]
 
 [project.scripts]

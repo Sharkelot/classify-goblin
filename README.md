@@ -185,6 +185,46 @@ extras in the environment that will own the model cache:
 python3 -m pip install -e '.[training]'
 ```
 
+### Reproducible training/test environment
+
+Use a **clean, repository-local venv** for training and tests — never the shared ComfyUI
+environment or a global site-packages. The base package is standard-library only, so only the
+`[training]` stack needs network (PyPI); no credentials or hosted API are required.
+
+```bash
+# Create, install, and verify (pip check) in one step:
+scripts/setup_env.sh
+
+# ...and run the full suite in the same step:
+scripts/setup_env.sh --test
+
+# Verify an existing .venv only:
+scripts/setup_env.sh --check
+```
+
+This installs the exact-pinned set in `requirements-training.txt`. The canonical pins are:
+`torch 2.13.0`, `transformers 4.56.0`, `huggingface-hub 0.36.2`, `tokenizers 0.22.0`,
+`safetensors 0.8.0`, `numpy 2.2.6`, `datasets 5.0.1`, `scikit-learn 1.9.1`,
+`accelerate 1.15.0`, `pytest`. These match the versions the 8093 service runs in the ComfyUI
+environment for the shared ML stack, so training and serving stay aligned.
+
+**Why `huggingface-hub` is capped below 1.0.** `transformers 4.56.0` requires
+`huggingface-hub>=0.34.0,<1.0` and `tokenizers 0.22.0` requires
+`huggingface-hub>=0.16.4,<1.0`; the intersection is `>=0.34.0 and <1.0`. The `1.24.0` that
+was present in the broken test environment is a newer major that both packages refuse, which
+is exactly why the calibration end-to-end test failed at import time. To upgrade, bump
+`transformers`, `tokenizers`, and `huggingface-hub` together (they share this coupling),
+re-run `pip check`, and re-run the full suite.
+
+After setup, run the suite with:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
+```
+
+The only expected skips are the optional-dependency skips in `tests/test_preprocessing.py`
+(`pypdf` and `Pillow` are not part of the training stack).
+
 The code uses a maximum sequence length of 512, a 192-unit decision head, up to ten output
 labels (eight Choice options at runtime to preserve the Laya bound). Training uses soft-target cross entropy plus Brier loss and an ordinal ranked-probability
 term for Score questions. The default schedule is one frozen-encoder head-warmup epoch followed
