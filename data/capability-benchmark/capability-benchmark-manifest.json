@@ -1,299 +1,382 @@
 {
   "capabilities": {
     "citation": {
-      "test": {
+      "calibration": {
         "labels": {
-          "true": 3
-        },
-        "support": 3
-      },
-      "train": {
-        "labels": {
-          "false": 20,
+          "false": 5,
           "true": 5
         },
-        "support": 25
+        "support": 10
       },
-      "validation": {
-        "labels": {
-          "true": 7
-        },
-        "support": 7
-      }
-    },
-    "compaction": {
       "test": {
         "labels": {
-          "drop": 3
+          "false": 5
         },
-        "support": 3
+        "support": 5
       },
       "train": {
         "labels": {
-          "drop": 10,
-          "keep": 15
+          "false": 5,
+          "true": 5
         },
-        "support": 25
-      },
-      "validation": {
-        "labels": {
-          "drop": 2,
-          "keep": 5
-        },
-        "support": 7
-      }
-    },
-    "completion": {
-      "test": {
-        "labels": {
-          "true": 3
-        },
-        "support": 3
-      },
-      "train": {
-        "labels": {
-          "true": 25
-        },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
           "false": 5,
-          "true": 2
+          "true": 5
         },
-        "support": 7
+        "support": 10
       }
     },
-    "composite": {
+    "compaction": {
+      "calibration": {
+        "labels": {
+          "drop": 10
+        },
+        "support": 10
+      },
       "test": {
         "labels": {
-          "medium": 3
+          "keep": 10
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "high": 10,
-          "medium": 15
+          "drop": 9,
+          "keep": 1
         },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
-          "low": 5,
-          "medium": 2
+          "keep": 5
         },
-        "support": 7
+        "support": 5
       }
     },
-    "confidence_action": {
+    "completion": {
+      "calibration": {
+        "labels": {
+          "true": 5
+        },
+        "support": 5
+      },
       "test": {
         "labels": {
-          "medium": 3
+          "true": 10
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "low": 15,
+          "false": 5,
+          "true": 5
+        },
+        "support": 10
+      },
+      "validation": {
+        "labels": {
+          "true": 10
+        },
+        "support": 10
+      }
+    },
+    "composite": {
+      "calibration": {
+        "labels": {
           "medium": 10
         },
-        "support": 25
+        "support": 10
+      },
+      "test": {
+        "labels": {
+          "low": 5,
+          "medium": 5
+        },
+        "support": 10
+      },
+      "train": {
+        "labels": {
+          "high": 5,
+          "low": 2,
+          "medium": 3
+        },
+        "support": 10
+      },
+      "validation": {
+        "labels": {
+          "high": 5
+        },
+        "support": 5
+      }
+    },
+    "confidence_action": {
+      "calibration": {
+        "labels": {
+          "low": 5,
+          "medium": 5
+        },
+        "support": 10
+      },
+      "test": {
+        "labels": {
+          "low": 5,
+          "medium": 5
+        },
+        "support": 10
+      },
+      "train": {
+        "labels": {
+          "low": 5
+        },
+        "support": 5
       },
       "validation": {
         "labels": {
           "high": 5,
-          "medium": 2
+          "medium": 5
         },
-        "support": 7
+        "support": 10
       }
     },
     "intent_routing": {
+      "calibration": {
+        "labels": {
+          "logic": 10
+        },
+        "support": 10
+      },
       "test": {
         "labels": {
-          "specialist-LLM": 3
+          "human": 5
         },
-        "support": 3
+        "support": 5
       },
       "train": {
         "labels": {
-          "human": 20,
-          "logic": 5
+          "human": 5,
+          "specialist-LLM": 5
         },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
-          "logic": 5,
-          "specialist-LLM": 2
+          "human": 6,
+          "logic": 4
         },
-        "support": 7
+        "support": 10
       }
     },
     "model_routing": {
+      "calibration": {
+        "labels": {
+          "frontier-LLM": 5
+        },
+        "support": 5
+      },
       "test": {
         "labels": {
-          "cheap-LLM": 3
+          "cheap-LLM": 2,
+          "frontier-LLM": 8
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "deterministic-code": 10,
-          "frontier-LLM": 15
+          "deterministic-code": 10
         },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
-          "cheap-LLM": 2,
+          "cheap-LLM": 5,
           "deterministic-code": 5
         },
-        "support": 7
+        "support": 10
       }
     },
     "progress": {
+      "calibration": {
+        "labels": {
+          "continue": 5,
+          "warn": 5
+        },
+        "support": 10
+      },
       "test": {
         "labels": {
-          "continue": 3
+          "replan": 5
         },
-        "support": 3
+        "support": 5
       },
       "train": {
         "labels": {
-          "replan": 10,
-          "warn": 15
+          "continue": 5,
+          "replan": 5
         },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
-          "continue": 7
+          "warn": 10
         },
-        "support": 7
+        "support": 10
       }
     },
     "rag_filter": {
+      "calibration": {
+        "labels": {
+          "flag": 5
+        },
+        "support": 5
+      },
       "test": {
         "labels": {
-          "flag": 3
+          "drop": 5,
+          "flag": 5
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "drop": 5,
-          "flag": 20
+          "flag": 5,
+          "keep": 5
         },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
-          "flag": 2,
-          "keep": 5
+          "flag": 10
         },
-        "support": 7
+        "support": 10
       }
     },
     "semantic_find": {
+      "calibration": {
+        "labels": {
+          "false": 5,
+          "true": 5
+        },
+        "support": 10
+      },
       "test": {
         "labels": {
-          "true": 3
+          "false": 5,
+          "true": 5
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "false": 20,
-          "true": 5
+          "false": 5
         },
-        "support": 25
+        "support": 5
       },
       "validation": {
         "labels": {
-          "true": 7
+          "false": 5,
+          "true": 5
         },
-        "support": 7
+        "support": 10
       }
     },
     "skill_selection": {
+      "calibration": {
+        "labels": {
+          "possible": 2,
+          "weak": 8
+        },
+        "support": 10
+      },
       "test": {
         "labels": {
-          "possible": 3
+          "possible": 5,
+          "weak": 5
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "possible": 10,
-          "weak": 15
+          "weak": 5
         },
-        "support": 25
+        "support": 5
       },
       "validation": {
         "labels": {
-          "possible": 2,
+          "possible": 5,
           "strong": 5
         },
-        "support": 7
+        "support": 10
       }
     },
     "tool_screening": {
+      "calibration": {
+        "labels": {
+          "suspicious": 10
+        },
+        "support": 10
+      },
       "test": {
         "labels": {
-          "suspicious": 3
+          "safe": 5,
+          "suspicious": 5
         },
-        "support": 3
+        "support": 10
       },
       "train": {
         "labels": {
-          "harmful": 10,
-          "suspicious": 15
+          "harmful": 5,
+          "suspicious": 5
         },
-        "support": 25
+        "support": 10
       },
       "validation": {
         "labels": {
-          "safe": 5,
-          "suspicious": 2
+          "harmful": 5
         },
-        "support": 7
+        "support": 5
       }
     }
   },
   "files": {
+    "calibration": {
+      "path": "data/capability-benchmark/capability-benchmark-calibration.jsonl",
+      "sha256": "8a62e37c19d15b3b793571dd4f52eead0a452b7084659641219bf5e4c03b20a6"
+    },
     "sample": {
       "path": "data/capability-benchmark/capability-benchmark-sample.jsonl",
-      "sha256": "f83a9672290148f1d9810fb0f46c337c9895bbf3dd90576d13377e596badcff2"
+      "sha256": "7141939a2bda0af6d12bbb2a5996c1021dbeb9348b649ea40ea6b921a511f24f"
     },
     "test": {
       "path": "data/capability-benchmark/capability-benchmark-test.jsonl",
-      "sha256": "786b11dc22521a2889a158eddce2f2cfd5f7808a407f5311bee75d08dc1c1578"
+      "sha256": "bf6ed4e0f5de9512d1500f2bdd16c513673ad03dae98fb42ee3b84a5fce94bca"
     },
     "train": {
       "path": "data/capability-benchmark/capability-benchmark-train.jsonl",
-      "sha256": "949153b3436b8f30b50c1d6b2e42f5ac9c4e34830c6645d9b527b9538b834d04"
+      "sha256": "2979636e1dd3673fa3a88a0977bd0400a85448f07da6aeeed20c6d6fb75ff357"
     },
     "validation": {
       "path": "data/capability-benchmark/capability-benchmark-validation.jsonl",
-      "sha256": "829e7c3884de0cfe7c50d214ef704a6c0aeec3e7a316b3d5cdf6d62a3e8ff82f"
+      "sha256": "5899f75190c0b72c07dad79c2bd8088aa4c2fbc0fd95d859968d243583e414b5"
     }
   },
   "fixture_class": "smoke",
   "heldout_per_capability": 10,
+  "heldout_seed": 20260921,
   "labeling_policy": "advisory probability targets; deterministic code owns thresholds and fail-open behavior",
   "min_heldout_for_full": 100,
   "provenance": "curated from the documented capability policy; no external Jev measurements; no secrets or external service dependency",
-  "regeneration": "python -m jev_laya_free.training capability-benchmark --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 --variants 5",
+  "regeneration": "python -m jev_laya_free.training capability-benchmark --seed 20260920 --variants 5",
   "schema_version": "1.0.0",
   "seed": 20260920,
   "splits": {
-    "test": 36,
-    "train": 300,
-    "validation": 84
+    "calibration": 105,
+    "test": 105,
+    "train": 105,
+    "validation": 105
   },
-  "test_fraction": 0.1,
   "total_examples": 420,
-  "validation_fraction": 0.2,
   "variants_per_scenario": 5
 }

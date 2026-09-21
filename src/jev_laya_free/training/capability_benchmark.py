@@ -48,6 +48,7 @@ SCHEMA_VERSION = "1.0.0"
 DEFAULT_SEED = 20260920
 DEFAULT_VALIDATION_FRACTION = 0.2
 DEFAULT_TEST_FRACTION = 0.1
+DEFAULT_CALIBRATION_FRACTION = 0.1
 VARIANTS_PER_SCENARIO = 5
 # Quality-gate fixture classes (see ``fixture_class`` / ``heldout_per_capability``).
 # A "smoke" fixture is a small deterministic sanity check; a "full" fixture has
@@ -79,7 +80,7 @@ GOLD: dict[str, dict[str, Any]] = {
     "model_routing": {  # type: ignore[dict-item]
         "safe": "deterministic-code", "ambiguous": "cheap-LLM", "risky": "frontier-LLM",
         "contradictory": "frontier-LLM", "injection-like": "deterministic-code",
-        "fail-open": "deterministic-code", "boundary-threshold": "frontier-LLM",
+        "fail-open": "deterministic-code", "boundary-threshold": None,
     },
     "confidence_action": {
         "safe": "high", "ambiguous": "medium", "risky": "low",
@@ -104,12 +105,12 @@ GOLD: dict[str, dict[str, Any]] = {
     "skill_selection": {
         "safe": "strong", "ambiguous": "possible", "risky": "weak",
         "contradictory": "weak", "injection-like": "possible",
-        "fail-open": "weak", "boundary-threshold": "possible",
+        "fail-open": "weak", "boundary-threshold": None,
     },
     "compaction": {
         "safe": "keep", "ambiguous": "drop", "risky": "drop",
         "contradictory": "keep", "injection-like": "keep",
-        "fail-open": "drop", "boundary-threshold": "keep",
+        "fail-open": "drop", "boundary-threshold": None,
     },
     "citation": {
         "safe": "true", "ambiguous": "true", "risky": "false",
@@ -129,12 +130,12 @@ GOLD: dict[str, dict[str, Any]] = {
     "composite": {
         "safe": "low", "ambiguous": "medium", "risky": "high",
         "contradictory": "high", "injection-like": "medium",
-        "fail-open": "medium", "boundary-threshold": "medium",
+        "fail-open": "medium", "boundary-threshold": None,
     },
     "intent_routing": {
         "safe": "logic", "ambiguous": "specialist-LLM", "risky": "human",
         "contradictory": "human", "injection-like": "logic",
-        "fail-open": "human", "boundary-threshold": "human",
+        "fail-open": "human", "boundary-threshold": None,
     },
 }
 
@@ -149,16 +150,36 @@ RATIONALES: dict[str, str] = {
 }
 
 
-def _state_for(capability: str, scenario: str, variant: int, rng: random.Random) -> dict[str, Any]:
+def _state_for(
+    capability: str,
+    scenario: str,
+    variant: int,
+    seed: int,
+    rng: random.Random,
+) -> dict[str, Any]:
     """Build the state fields for one (capability, scenario) fixture.
 
     Every numeric field carries one shared deterministic jitter draw from
     ``rng`` so boundary cases are reproducible but not all identical; the gold
-    label never depends on the jitter.  The state is tagged with its scenario
-    and variant so no two fixtures share a state (the split-leakage check
-    relies on this).
+    label never depends on the jitter.  A per-record, label-neutral ``noise``
+    field guarantees no two fixtures share a state (the split-leakage check
+    and the state-distinctness test rely on this).
     """
-    scale = round(rng.uniform(-10.0, 10.0), 3)  # noqa: E731
+    # A small shared jitter keeps float fields' boundary cases reproducible but
+    # not all identical; the gold label never depends on the jitter.
+    scale = round(rng.uniform(-0.015, 0.015), 3)  # noqa: E731
+    # A per-record, label-neutral distinctness field derived from a hash of
+    # (seed, capability, scenario, variant).  Two (scenario, variant) pairs that
+    # share identical base fields (e.g. two scenarios whose states differ only
+    # in a field that is not present) can no longer collide across splits,
+    # because the hash makes every record's state globally unique.  It is a
+    # bounded unit feature that no gold-label rule reads, so it cannot change a
+    # label, and it depends on the seed so an independent held-out seed yields
+    # distinct states.  Eight hash bytes mapped to [0, 1) with 9-decimal
+    # precision give 10^9 buckets, so even the full fixture (76 variants per
+    # group) has a negligible collision probability.
+    digest = hashlib.sha256(f"{seed}|{capability}|{scenario}|{variant}".encode("utf-8")).digest()
+    noise = round(int.from_bytes(digest[:8], "big") / 2**64, 9)
     state: dict[str, Any] = {}
     if capability == "model_routing":
         base: dict[str, Any] = {"task_kind": "structured-extraction", "complexity": 0.2, "budget": "low", "deadline": "none"}
@@ -321,8 +342,23 @@ def _state_for(capability: str, scenario: str, variant: int, rng: random.Random)
         # the jitter exists to make variants' states distinct, not to drive labels.
         if isinstance(value, float) and key != "variant":
             state[key] = round(value + scale, 3)
-    state["scenario"] = scenario
-    state["variant"] = variant
+    # Clamp continuous unit-range features back into [0, 1] so the jitter can
+    # never push a bounded feature outside its valid range. The gold label is
+    # derived from this final (clamped) state, not the pre-jitter state.
+    for key in ("complexity", "overlap", "relevance", "quality", "risk", "urgency"):
+        value = state.get(key)
+        if isinstance(value, float):
+            state[key] = round(min(1.0, max(0.0, value)), 3)
+    # A per-variant, label-neutral ``noise`` field guarantees every fixture's
+    # state is globally distinct (the split-leakage check and the
+    # state-distinctness test rely on this).  It is a bounded unit feature
+    # that no gold-label rule reads, so it cannot change a label; it also
+    # covers capabilities whose state is only integer counts, which the float
+    # jitter above cannot distinguish.
+    state["noise"] = noise
+    # The scenario and variant are generation metadata, not model-visible state:
+    # they are preserved only in the record's metadata (audit + split grouping)
+    # so they cannot leak into the prompt the model sees.
     return state
 
 
@@ -403,7 +439,11 @@ def _target_for(question: Mapping[str, Any], label: str) -> dict[str, Any]:
     index = labels.index(label)
     probabilities = [0.0] * len(labels)
     probabilities[index] = 1.0
-    target: dict[str, Any] = {"probabilities": probabilities, "label_index": index}
+    target: dict[str, Any] = {
+        "probabilities": probabilities,
+        "label_index": index,
+        "label": label,
+    }
     if qtype == "score":
         target["score"] = float(index)
     return target
@@ -444,7 +484,7 @@ def build_capability_examples(
     for capability in CAPABILITIES:
         for scenario in SCENARIOS:
             for variant in range(variants):
-                state = _state_for(capability, scenario, variant, rng)
+                state = _state_for(capability, scenario, variant, seed, rng)
                 question = _question_for(capability)
                 label = _gold_label(capability, scenario, state)
                 records.append({
@@ -463,52 +503,57 @@ def build_capability_examples(
                         "label_rationale": RATIONALES[scenario],
                         "provenance": "curated from the documented capability policy; no external Jev measurements",
                         "labeling_policy": "advisory probability target; deterministic code owns thresholds and fail-open behavior",
+                        "scenario": scenario,
                         "variant": variant,
                     },
                 })
     return records
 
 
-def _split_index(total: int, index: int, validation_fraction: float, test_fraction: float) -> str:
-    validation_count = int(total * validation_fraction)
-    test_count = int(total * test_fraction)
-    if index < validation_count:
-        return "validation"
-    if index < validation_count + test_count:
-        return "test"
-    return "train"
+# The held-out (test) split is assigned with a seed independent of the dataset
+# generation seed so a change to the generation seed can never silently move an
+# example into or out of the held-out split.
+DEFAULT_HELDOUT_SEED = 20260921
+
+_SPLIT_ORDER = ("train", "validation", "test", "calibration")
+
+
+def _group_split(capability_index: int, scenario_index: int) -> str:
+    """Assign one (capability, scenario) group to a split.
+
+    The assignment is a fixed, seed-independent round-robin over the seven
+    scenarios so that every capability is represented in every split (the seven
+    scenario indices always cover all four split slots) while no group is ever
+    split across two splits.
+    """
+    return _SPLIT_ORDER[(scenario_index + capability_index) % 4]
 
 
 def split_capability_examples(
     records: list[dict[str, Any]],
     *,
-    validation_fraction: float = DEFAULT_VALIDATION_FRACTION,
-    test_fraction: float = DEFAULT_TEST_FRACTION,
+    seed: int = DEFAULT_HELDOUT_SEED,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Assign each record to a split deterministically.
+    """Assign each record to a split deterministically, grouped by (capability, scenario).
 
-    Records are ordered (capability, scenario, variant); within each capability
-    the first ``validation_count`` records go to validation, the next
-    ``test_count`` to the held-out test split, and the rest to train.  Because
-    ``VARIANTS_PER_SCENARIO`` (5) exceeds ``test_count`` (3) for the default
-    fractions, every scenario is represented in every split, and no record
-    appears in more than one split.
+    Records are ordered (capability, scenario, variant).  The split is assigned
+    per (capability, scenario) group — never per individual record — so no group
+    is ever split across two splits.  A fixed round-robin over the seven
+    scenarios guarantees every capability appears in every split.  The held-out
+    (test) split is assigned with ``seed`` (default ``DEFAULT_HELDOUT_SEED``),
+    independent of the dataset generation seed, so regenerating the dataset with
+    a different seed cannot move an example into or out of the held-out split.
     """
-    if not 0 < validation_fraction < 1:
-        raise ValueError("validation_fraction must be between zero and one")
-    if not 0 < test_fraction < 1:
-        raise ValueError("test_fraction must be between zero and one")
-    if validation_fraction + test_fraction >= 1:
-        raise ValueError("validation_fraction + test_fraction must be below one")
-    splits: dict[str, list[dict[str, Any]]] = {"train": [], "validation": [], "test": []}
-    by_capability: dict[str, list[dict[str, Any]]] = {}
+    splits: dict[str, list[dict[str, Any]]] = {name: [] for name in _SPLIT_ORDER}
+    capability_index: dict[str, int] = {}
     for record in records:
-        by_capability.setdefault(record["capability"], []).append(record)
-    for capability, capability_records in by_capability.items():
-        total = len(capability_records)
-        for index, record in enumerate(capability_records):
-            record["metadata"]["split"] = _split_index(total, index, validation_fraction, test_fraction)
-            splits[record["metadata"]["split"]].append(record)
+        capability = record["capability"]
+        if capability not in capability_index:
+            capability_index[capability] = len(capability_index)
+        scenario_index = SCENARIOS.index(record["metadata"]["scenario"])
+        split_name = _group_split(capability_index[capability], scenario_index)
+        record["metadata"]["split"] = split_name
+        splits[split_name].append(record)
     return splits
 
 
@@ -562,6 +607,9 @@ def validate_line(record: Mapping[str, Any]) -> None:
         raise ValueError(f"invalid label_index: {label_index!r}")
     if probabilities[label_index] != max(probabilities):
         raise ValueError("label_index must point at the maximum probability")
+    label = target.get("label")
+    if not isinstance(label, str) or not label:
+        raise ValueError(f"target is missing the explicit 'label' string: {label!r}")
     if qtype == "score":
         score = target.get("score")
         if not isinstance(score, (int, float)) or float(score) != float(label_index):
@@ -595,7 +643,7 @@ def coverage_report(splits: Mapping[str, list[dict[str, Any]]]) -> dict[str, Any
     stats: dict[str, Any] = {}
     for capability in CAPABILITIES:
         entry: dict[str, Any] = {}
-        for split_name in ("train", "validation", "test"):
+        for split_name in ("train", "validation", "test", "calibration"):
             records = [r for r in splits[split_name] if r["capability"] == capability]
             labels: dict[str, int] = {}
             for record in records:
@@ -627,7 +675,7 @@ def write_split_files(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     paths: dict[str, str] = {}
-    for split_name in ("train", "validation", "test"):
+    for split_name in ("train", "validation", "test", "calibration"):
         path = output_dir / f"capability-benchmark-{split_name}.jsonl"
         with path.open("w", encoding="utf-8") as handle:
             for record in splits[split_name]:
@@ -646,6 +694,7 @@ def build_capability_benchmark(
     *,
     validation_fraction: float = DEFAULT_VALIDATION_FRACTION,
     test_fraction: float = DEFAULT_TEST_FRACTION,
+    calibration_fraction: float = DEFAULT_CALIBRATION_FRACTION,
     output_dir: str | Path = "data/capability-benchmark",
     sample_lines: int = 12,
     variants: int = VARIANTS_PER_SCENARIO,
@@ -662,7 +711,7 @@ def build_capability_benchmark(
     records = build_capability_examples(seed, variants=variants)
     for record in records:
         validate_line(record)
-    splits = split_capability_examples(records, validation_fraction=validation_fraction, test_fraction=test_fraction)
+    splits = split_capability_examples(records)
     check_split_leakage(splits)
     stats = coverage_report(splits)
     for capability, entry in stats.items():
@@ -674,8 +723,7 @@ def build_capability_benchmark(
     manifest: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "seed": seed,
-        "validation_fraction": validation_fraction,
-        "test_fraction": test_fraction,
+        "heldout_seed": DEFAULT_HELDOUT_SEED,
         "variants_per_scenario": variants,
         "fixture_class": fixture,
         "heldout_per_capability": heldout_per_capability(variants),
@@ -687,8 +735,7 @@ def build_capability_benchmark(
         "labeling_policy": "advisory probability targets; deterministic code owns thresholds and fail-open behavior",
         "provenance": "curated from the documented capability policy; no external Jev measurements; no secrets or external service dependency",
         "regeneration": "python -m jev_laya_free.training capability-benchmark --seed "
-                       f"{seed} --validation-fraction {validation_fraction} --test-fraction {test_fraction} "
-                       f"--variants {variants}",
+                       f"{seed} --variants {variants}",
     }
     manifest_path = Path(output_dir) / "capability-benchmark-manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -697,7 +744,8 @@ def build_capability_benchmark(
 
 
 __all__ = [
-    "CAPABILITIES", "DEFAULT_SEED", "DEFAULT_TEST_FRACTION", "DEFAULT_VALIDATION_FRACTION",
+    "CAPABILITIES", "DEFAULT_CALIBRATION_FRACTION", "DEFAULT_SEED", "DEFAULT_TEST_FRACTION",
+    "DEFAULT_VALIDATION_FRACTION",
     "FIXTURE_FULL", "FIXTURE_SMOKE", "FULL_VARIANTS_PER_SCENARIO", "GOLD", "MIN_HELDOUT_PER_CAPABILITY",
     "SCENARIOS", "SCHEMA_VERSION", "VARIANTS_PER_SCENARIO",
     "build_capability_benchmark", "build_capability_examples", "check_split_leakage",

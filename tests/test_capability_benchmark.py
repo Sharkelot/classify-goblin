@@ -38,7 +38,7 @@ class CapabilityBenchmarkTests(unittest.TestCase):
         splits = split_capability_examples(records)
         total = sum(len(v) for v in splits.values())
         self.assertEqual(total, len(records))
-        self.assertEqual(set(splits), {"train", "validation", "test"})
+        self.assertEqual(set(splits), {"train", "validation", "test", "calibration"})
         # Re-running produces identical split sizes.
         again = split_capability_examples(build_capability_examples())
         self.assertEqual({k: len(v) for k, v in splits.items()},
@@ -71,11 +71,12 @@ class CapabilityBenchmarkTests(unittest.TestCase):
         splits = split_capability_examples(build_capability_examples())
         report = coverage_report(splits)
         self.assertEqual(set(report), set(CAPABILITIES))
+        all_splits = ("train", "validation", "test", "calibration")
         for capability, entry in report.items():
-            for split in ("train", "validation", "test"):
+            for split in all_splits:
                 self.assertGreaterEqual(entry[split]["support"], 0)
             # 35 examples per capability across all splits (7 scenarios x 5 variants).
-            total = sum(entry[s]["support"] for s in ("train", "validation", "test"))
+            total = sum(entry[s]["support"] for s in all_splits)
             self.assertEqual(total, 7 * VARIANTS_PER_SCENARIO)
 
     def test_fixture_class_smoke(self):

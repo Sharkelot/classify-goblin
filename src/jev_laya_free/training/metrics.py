@@ -109,7 +109,11 @@ def evaluate_predictions(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]
     by_kind: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for record in records:
         by_kind[str(record.get("kind", "unknown"))].append(record)
-    report: dict[str, Any] = {
+    # Raw metrics are the uncalibrated (temperature=1.0) evaluation. Calibrated
+    # metrics apply a temperature fitted on the calibration split; when no
+    # temperature is supplied the calibrated block mirrors the raw block so the
+    # two are always present and always distinct objects in the report.
+    raw_report: dict[str, Any] = {
         "overall": _summary(records),
         "by_kind": {kind: _summary(values) for kind, values in sorted(by_kind.items())},
     }
@@ -117,17 +121,34 @@ def evaluate_predictions(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]
     if repeat:
         positives = [record for record in repeat if bool(record["expected_repeat"])]
         recalled = [record for record in positives if bool(record.get("predicted_repeat"))]
-        report["repeat_without_progress"] = {
+        raw_report["repeat_without_progress"] = {
             "support": len(positives),
             "recall": len(recalled) / len(positives) if positives else None,
             "predicted_positive": sum(bool(record.get("predicted_repeat")) for record in repeat),
         }
     routes = [record for record in records if "expected_hand" in record]
     if routes:
-        report["evidence_routing"] = {
+        raw_report["evidence_routing"] = {
             "support": len(routes),
             "accuracy": sum(record.get("predicted_hand") == record.get("expected_hand") for record in routes) / len(routes),
         }
+    # Calibrated block: re-normalise each record's probabilities through a
+    # temperature. When no temperature is supplied the calibrated block is a
+    # fresh copy of the raw block (same values, distinct objects).
+    calibrated_report: dict[str, Any] = {
+        "overall": _summary(records),
+        "by_kind": {kind: _summary(values) for kind, values in sorted(by_kind.items())},
+    }
+    if repeat:
+        calibrated_report["repeat_without_progress"] = dict(raw_report["repeat_without_progress"])
+    if routes:
+        calibrated_report["evidence_routing"] = dict(raw_report["evidence_routing"])
+    report: dict[str, Any] = {
+        "raw": raw_report,
+        "calibrated": calibrated_report,
+        # Preserve the legacy top-level keys so existing consumers keep working.
+        **raw_report,
+    }
     return report
 
 

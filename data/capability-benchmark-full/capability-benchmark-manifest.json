@@ -1,309 +1,382 @@
 {
   "capabilities": {
     "citation": {
-      "test": {
+      "calibration": {
         "labels": {
-          "false": 7,
-          "true": 46
-        },
-        "support": 53
-      },
-      "train": {
-        "labels": {
-          "false": 297,
+          "false": 76,
           "true": 76
         },
-        "support": 373
+        "support": 152
       },
-      "validation": {
-        "labels": {
-          "true": 106
-        },
-        "support": 106
-      }
-    },
-    "compaction": {
       "test": {
         "labels": {
-          "drop": 53
+          "false": 76
         },
-        "support": 53
+        "support": 76
       },
       "train": {
         "labels": {
-          "drop": 145,
-          "keep": 228
+          "false": 76,
+          "true": 76
         },
-        "support": 373
-      },
-      "validation": {
-        "labels": {
-          "drop": 30,
-          "keep": 76
-        },
-        "support": 106
-      }
-    },
-    "completion": {
-      "test": {
-        "labels": {
-          "true": 53
-        },
-        "support": 53
-      },
-      "train": {
-        "labels": {
-          "true": 373
-        },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
           "false": 76,
-          "true": 30
+          "true": 76
         },
-        "support": 106
+        "support": 152
       }
     },
-    "composite": {
+    "compaction": {
+      "calibration": {
+        "labels": {
+          "drop": 152
+        },
+        "support": 152
+      },
       "test": {
         "labels": {
-          "high": 7,
-          "medium": 46
+          "keep": 152
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "high": 145,
-          "medium": 228
+          "drop": 112,
+          "keep": 40
         },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
-          "low": 76,
-          "medium": 30
+          "keep": 76
         },
-        "support": 106
+        "support": 76
       }
     },
-    "confidence_action": {
+    "completion": {
+      "calibration": {
+        "labels": {
+          "true": 76
+        },
+        "support": 76
+      },
       "test": {
         "labels": {
-          "low": 7,
-          "medium": 46
+          "true": 152
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "low": 221,
+          "false": 76,
+          "true": 76
+        },
+        "support": 152
+      },
+      "validation": {
+        "labels": {
+          "true": 152
+        },
+        "support": 152
+      }
+    },
+    "composite": {
+      "calibration": {
+        "labels": {
           "medium": 152
         },
-        "support": 373
+        "support": 152
+      },
+      "test": {
+        "labels": {
+          "low": 76,
+          "medium": 76
+        },
+        "support": 152
+      },
+      "train": {
+        "labels": {
+          "high": 76,
+          "low": 41,
+          "medium": 35
+        },
+        "support": 152
+      },
+      "validation": {
+        "labels": {
+          "high": 76
+        },
+        "support": 76
+      }
+    },
+    "confidence_action": {
+      "calibration": {
+        "labels": {
+          "low": 76,
+          "medium": 76
+        },
+        "support": 152
+      },
+      "test": {
+        "labels": {
+          "low": 76,
+          "medium": 76
+        },
+        "support": 152
+      },
+      "train": {
+        "labels": {
+          "low": 76
+        },
+        "support": 76
       },
       "validation": {
         "labels": {
           "high": 76,
-          "medium": 30
+          "medium": 76
         },
-        "support": 106
+        "support": 152
       }
     },
     "intent_routing": {
+      "calibration": {
+        "labels": {
+          "logic": 152
+        },
+        "support": 152
+      },
       "test": {
         "labels": {
-          "human": 7,
-          "specialist-LLM": 46
+          "human": 76
         },
-        "support": 53
+        "support": 76
       },
       "train": {
         "labels": {
-          "human": 297,
-          "logic": 76
+          "human": 76,
+          "specialist-LLM": 76
         },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
-          "logic": 76,
-          "specialist-LLM": 30
+          "human": 120,
+          "logic": 32
         },
-        "support": 106
+        "support": 152
       }
     },
     "model_routing": {
+      "calibration": {
+        "labels": {
+          "frontier-LLM": 76
+        },
+        "support": 76
+      },
       "test": {
         "labels": {
-          "cheap-LLM": 46,
-          "frontier-LLM": 7
+          "cheap-LLM": 37,
+          "frontier-LLM": 115
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "deterministic-code": 152,
-          "frontier-LLM": 221
+          "deterministic-code": 152
         },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
-          "cheap-LLM": 30,
+          "cheap-LLM": 76,
           "deterministic-code": 76
         },
-        "support": 106
+        "support": 152
       }
     },
     "progress": {
+      "calibration": {
+        "labels": {
+          "continue": 76,
+          "warn": 76
+        },
+        "support": 152
+      },
       "test": {
         "labels": {
-          "continue": 46,
-          "warn": 7
+          "replan": 76
         },
-        "support": 53
+        "support": 76
       },
       "train": {
         "labels": {
-          "replan": 152,
-          "warn": 221
+          "continue": 76,
+          "replan": 76
         },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
-          "continue": 106
+          "warn": 152
         },
-        "support": 106
+        "support": 152
       }
     },
     "rag_filter": {
+      "calibration": {
+        "labels": {
+          "flag": 76
+        },
+        "support": 76
+      },
       "test": {
         "labels": {
-          "drop": 7,
-          "flag": 46
+          "drop": 76,
+          "flag": 76
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "drop": 69,
-          "flag": 304
+          "flag": 76,
+          "keep": 76
         },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
-          "flag": 30,
-          "keep": 76
+          "flag": 152
         },
-        "support": 106
+        "support": 152
       }
     },
     "semantic_find": {
+      "calibration": {
+        "labels": {
+          "false": 76,
+          "true": 76
+        },
+        "support": 152
+      },
       "test": {
         "labels": {
-          "false": 7,
-          "true": 46
+          "false": 76,
+          "true": 76
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "false": 297,
-          "true": 76
+          "false": 76
         },
-        "support": 373
+        "support": 76
       },
       "validation": {
         "labels": {
-          "true": 106
+          "false": 76,
+          "true": 76
         },
-        "support": 106
+        "support": 152
       }
     },
     "skill_selection": {
+      "calibration": {
+        "labels": {
+          "possible": 42,
+          "weak": 110
+        },
+        "support": 152
+      },
       "test": {
         "labels": {
-          "possible": 46,
-          "weak": 7
+          "possible": 76,
+          "weak": 76
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "possible": 152,
-          "weak": 221
+          "weak": 76
         },
-        "support": 373
+        "support": 76
       },
       "validation": {
         "labels": {
-          "possible": 30,
+          "possible": 76,
           "strong": 76
         },
-        "support": 106
+        "support": 152
       }
     },
     "tool_screening": {
+      "calibration": {
+        "labels": {
+          "suspicious": 152
+        },
+        "support": 152
+      },
       "test": {
         "labels": {
-          "harmful": 7,
-          "suspicious": 46
+          "safe": 76,
+          "suspicious": 76
         },
-        "support": 53
+        "support": 152
       },
       "train": {
         "labels": {
-          "harmful": 145,
-          "suspicious": 228
+          "harmful": 76,
+          "suspicious": 76
         },
-        "support": 373
+        "support": 152
       },
       "validation": {
         "labels": {
-          "safe": 76,
-          "suspicious": 30
+          "harmful": 76
         },
-        "support": 106
+        "support": 76
       }
     }
   },
   "files": {
+    "calibration": {
+      "path": "data/capability-benchmark-full/capability-benchmark-calibration.jsonl",
+      "sha256": "b896466407a56d5593a850e13b37aad2bd10c3311551a5c5fcfe2121ab7dd867"
+    },
     "sample": {
       "path": "data/capability-benchmark-full/capability-benchmark-sample.jsonl",
-      "sha256": "6652c626a5d84814d9e235ced46766e9e9ef0067399d7e8cc9568917e2eb2ed2"
+      "sha256": "0465b5056134829ba5aa9ecca89977c8e1d6d7617474fbc4a099dcb0d0d94495"
     },
     "test": {
       "path": "data/capability-benchmark-full/capability-benchmark-test.jsonl",
-      "sha256": "60a48fedaebf2c995b0a6c7383ff4fcb1065f358121cdebddda7b905b783a146"
+      "sha256": "eadd516ba0f0150dc48e1e6c4c38861cc776a8d66401b64f18ed5b724439a2a0"
     },
     "train": {
       "path": "data/capability-benchmark-full/capability-benchmark-train.jsonl",
-      "sha256": "f97fb70fe36e56a92672bd20e29772deff8bc92b0663c2e79eb2faf858c0f5d1"
+      "sha256": "30be719a583b146251ad6b83236fb57e615abaa0d08ae1cce181fd9c213f068c"
     },
     "validation": {
       "path": "data/capability-benchmark-full/capability-benchmark-validation.jsonl",
-      "sha256": "fe576da311483c036cfd373ac94dee60a50d97078f9216ccabeddbd306b3c737"
+      "sha256": "db8a61d1add8daad7663462b67c0c5afeb4406ad2db4c48b39a109b60d5d2a6c"
     }
   },
   "fixture_class": "full",
   "heldout_per_capability": 159,
+  "heldout_seed": 20260921,
   "labeling_policy": "advisory probability targets; deterministic code owns thresholds and fail-open behavior",
   "min_heldout_for_full": 100,
   "provenance": "curated from the documented capability policy; no external Jev measurements; no secrets or external service dependency",
-  "regeneration": "python -m jev_laya_free.training capability-benchmark --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 --variants 76",
+  "regeneration": "python -m jev_laya_free.training capability-benchmark --seed 20260920 --variants 76",
   "schema_version": "1.0.0",
   "seed": 20260920,
   "splits": {
-    "test": 636,
-    "train": 4476,
-    "validation": 1272
+    "calibration": 1596,
+    "test": 1596,
+    "train": 1596,
+    "validation": 1596
   },
-  "test_fraction": 0.1,
   "total_examples": 6384,
-  "validation_fraction": 0.2,
   "variants_per_scenario": 76
 }
