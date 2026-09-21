@@ -6,7 +6,8 @@ The checkpoint format is local and explicit; it is not a hosted Jev/Laya checkpo
 
 Only the inference surface lives here: checkpoint loading, configuration, prompt
 reconstruction, and the decision head.  Training, base-model download, and checkpoint
-mutation are not part of this release and live in the trainer.
+mutation are not part of this release; they run in a separate, non-distributed
+environment.
 """
 
 from __future__ import annotations
@@ -159,7 +160,7 @@ def _load_torch_state(path: Path):
 
 
 def load_checkpoint(path: str | Path, *, device: str | None = None, local_files_only: bool = True):
-    """Load a complete local checkpoint for inference or continued training."""
+    """Load a complete local checkpoint for inference."""
 
     torch, _ = _torch_import()
     AutoModel, AutoTokenizer = _transformers_import()

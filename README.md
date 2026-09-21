@@ -1,20 +1,25 @@
-# jev-laya-free
+# Goblin JEV
 
-The advisory catalog now covers the 12 awesome-jev capability families (routing, action
-confidence, screening, progress, completion, skills, compaction, citations, RAG, semantic
-find, composite scoring, and intent routing). See `docs/jev-hermes-integration.md` and
-`reports/final-capabilities.json`; deterministic workflow guards remain authoritative.
+**Goblin JEV** is an independent, MIT-licensed local implementation of the documented
+Jev typed-decision HTTP shape, with a Python client and optional local inference
+backends. The public runtime is model-neutral: the same wire contract, client, and
+agent-harness integration work across the deterministic rules backend, the optional
+Laya backend, the local DistilBERT backend, and the local Qwen artifact backend.
+This is **not TypeSafe's hosted model**, an official TypeSafe SDK, a reproduction of
+Jev's weights, or a promise of equivalent predictions. Local confidence is **not
+calibrated Jev confidence**.
 
-An independent, MIT-licensed local implementation of the documented Jev typed-decision
-HTTP shape, with a Python client and optional Laya inference. This is **not TypeSafe's
-hosted model**, an official TypeSafe SDK, a reproduction of Jev's weights, or a promise
-of equivalent predictions. Local confidence is **not calibrated Jev confidence**.
+The advisory catalog covers the 12 capability families (routing, action confidence,
+screening, progress, completion, skills, compaction, citations, RAG, semantic find,
+composite scoring, and intent routing). See `docs/jev-hermes-integration.md`;
+deterministic workflow guards remain authoritative.
 
-No hosted API, model weights, private traces, or secrets are included. The default backend
-is a deterministic lexical demo for testing. It does not understand arbitrary instructions
-and must not be used as an intelligent safety classifier. The optional Laya backend is
-advisory; its reliability must be evaluated on your own data. “Free” refers to this source
-and local operation without a hosted API fee; model licensing and hardware costs are separate.
+No hosted API, model weights, private traces, or secrets are included. The default
+backend is a deterministic lexical demo for testing. It does not understand arbitrary
+instructions and must not be used as an intelligent safety classifier. The optional
+backends are advisory; their reliability must be evaluated on your own data. “Free”
+refers to this source and local operation without a hosted API fee; model licensing
+and hardware costs are separate.
 
 ## Repository status (2026-09-21)
 
@@ -282,231 +287,65 @@ revalidates the selected profile and owns every side effect.
 
 Full contract, schemas, and usage: [`docs/PROFILE_ASSESSOR.md`](docs/PROFILE_ASSESSOR.md).
 
-## Optional local DistilBERT training
+## Training is not shipped
 
-Training is **not part of this release**. This package ships the inference runtime, the
-typed protocol, artifact security, and the benchmark conformance path. The reproducible
-training path for a DistilBERT-base encoder (`distilbert/distilbert-base-uncased`,
-Apache-2.0, about 67M parameters) with a compact shared typed-decision head lives in the
-**trainer** module. The base install stays standard-library only; the trainer owns its own
-PyTorch/Transformers pins, the clean-venv setup script, and the training/test data.
+This release is runtime-only: it ships the inference runtime, the typed
+protocol, artifact security, and the benchmark conformance path. Training,
+dataset generation, base-model download, and temperature calibration are not
+shipped, and the `jev_laya_free.trainer` module does not exist in this
+repository. Training is performed in a separate, non-distributed environment;
+no in-repo training command is provided.
 
-To train, install the trainer in a separate environment (never the shared ComfyUI
-environment or a global site-packages) and follow its pinned requirements. After training,
-publish a checksummed checkpoint manifest and install it with:
+## Checkpoint installation
+
+The local DistilBERT backend loads a manifest-verified checkpoint for
+inference. Install one with the bundled installer:
 
 ```bash
 goblin-jev download-checkpoint --manifest <manifest.json> --cache-dir <dir>
 ```
 
-The local DistilBERT backend loads that checkpoint for inference. The base package does not
-download model weights or run training; it only loads a manifest-verified checkpoint.
+The manifest is a small versioned JSON document (not the weights) carrying a
+verified release artifact URL, exact SHA-256, size/format, expected files, and
+compatibility version. The installer policy-checks the URL (HTTPS or loopback
+HTTP only), bounds the download size, verifies the checksum, extracts with
+path/symlink traversal protection, and installs atomically. Every failure path
+fails closed.
 
-Download public assets with the Hugging Face CLI (the commands write only to ignored paths):
+**Checkpoint manifest status:** no canonical public checkpoint manifest exists
+for this release. No immutable public URL or SHA-256 is currently published,
+so the installer requires a manifest supplied by the checkpoint producer
+(e.g. a local manifest pointing at a loopback or HTTPS artifact). It fails
+closed rather than guessing a mutable `latest` reference. The local checkpoint
+layout is `jev_laya_config.json`, `encoder/`, `head.pt`, and tokenizer files,
+intentionally separate from Laya weights.
 
-```bash
-export JEV_DATA_DIR="$PWD/datasets/local"
-export JEV_MODEL_DIR="$PWD/models/local"
-mkdir -p "$JEV_DATA_DIR" "$JEV_MODEL_DIR"
-hf download LocalLLaMA/typed-decisions --type dataset --local-dir "$JEV_DATA_DIR/typed-decisions"
-hf download distilbert/distilbert-base-uncased --type model --local-dir "$JEV_MODEL_DIR/distilbert-base-uncased"
-```
-
-Alternatively let `datasets` and Transformers populate their normal cache through the preparation
-and training commands. A disconnected synthetic smoke path does not need either download:
-
-```bash
-python -m jev_laya_free.trainer prepare \
-  --include-synthetic --synthetic-count 24 --output data/hybrid.jsonl \
-  --validation-output data/validation.jsonl --no-local-traces
-python -m jev_laya_free.trainer smoke --tiny-random --device auto
-python -m jev_laya_free.trainer evaluate --output reports/synthetic.json
-```
-
-For public preparation, use the dataset loader after installing the extras:
+After a manifest-verified checkpoint is installed, enable the backend
+explicitly:
 
 ```bash
-python -m jev_laya_free.trainer prepare \
-  --public-dataset "$JEV_DATA_DIR/typed-decisions" --public-config all --public-split train \
-  --include-synthetic --output data/hybrid.jsonl --validation-output data/validation.jsonl
-
-# Keep the public test cases out of training; the two outputs together contain the test split.
-python -m jev_laya_free.trainer prepare \
-  --public-dataset "$JEV_DATA_DIR/typed-decisions" --public-config all --public-split test \
-  --no-local-traces --output data/public-test-a.jsonl \
-  --validation-output data/public-test-b.jsonl
-```
-
-Preparation uses the default redacted Hermes path when it exists. Pass another local Hermes
-JSONL with `--local-traces`, or add `--no-local-traces` for a fully synthetic/public run:
-
-```bash
-python -m jev_laya_free.trainer prepare \
-  --public-dataset LocalLLaMA/typed-decisions --local-traces \
-  /home/coreys/models/laya-sidecar/data/hermes-traces.jsonl \
-  --output data/hybrid.jsonl --validation-output data/validation.jsonl
-```
-
-Local rows are redacted and bounded during normalization, but the resulting training files can
-still contain private task context. Keep every data/output path private and ignored; no local
-trace, report, dataset, checkpoint, `safetensors`, or binary weight is part of this repository.
-The split is group-stable so rows sharing a task group do not cross the train/validation boundary.
-
-Train and evaluate a checkpoint after the data and base model are available locally:
-
-```bash
-python -m jev_laya_free.trainer train \
-  --data data/hybrid.jsonl --model "$JEV_MODEL_DIR/distilbert-base-uncased" \
-  --validation-data data/validation.jsonl \
-  --local-files-only --output-dir checkpoints/local-distilbert \
-  --device cuda --precision bf16 --warmup-epochs 1 --epochs 3
-python -m jev_laya_free.trainer evaluate \
-  --predictions reports/predictions.jsonl --output reports/evaluation.json
-```
-
-The regular `smoke` command loads the real base checkpoint and performs one forward/backward
-optimizer step. `--tiny-random` uses a one-layer random DistilBERT configuration and is the
-offline CI path; it verifies tensor shapes, the soft-target/Brier/RPS loss, and optimizer wiring,
-not model quality. The evaluator reports accuracy, NLL, Brier, ECE, RPS, temperature fitting,
-repeat-without-progress recall, evidence-route accuracy, and deterministic-rule precedence.
-
-After a checkpoint passes held-out acceptance checks, enable it explicitly:
-
-```bash
-export JEV_DISTILBERT_MODEL_PATH="$PWD/checkpoints/local-distilbert"
+export JEV_DISTILBERT_MODEL_PATH=<installed-checkpoint-dir>
 export JEV_DISTILBERT_DEVICE=cuda
 PYTHONPATH=src python3 -m jev_laya_free.server --backend distilbert --port 8093
 ```
 
-`distilbert` is opt-in and fail-closed: missing optional dependencies, missing local files, an
-unsupported checkpoint, or an unknown question task abort backend startup. It never replaces the
-rules backend automatically. The deterministic Hermes/Qwen workflow guard remains authoritative;
-the DistilBERT probabilities cannot authorize retries, tool calls, gateway changes, or terminal
-writes. Qwen remains the analyzer and tool user for code, PDF, and image evidence.
+`distilbert` is opt-in and fail-closed: missing optional dependencies, missing
+local files, an unsupported checkpoint, or an unknown question task abort
+backend startup. It never replaces the rules backend automatically. The
+deterministic Hermes/Qwen workflow guard remains authoritative; DistilBERT
+probabilities cannot authorize retries, tool calls, gateway changes, or
+terminal writes. Qwen remains the analyzer and tool user for code, PDF, and
+image evidence. No public download or GPU run is performed during package
+import or the base test suite.
 
-The checkpoint format is local (`jev_laya_config.json`, `encoder/`, `head.pt`, tokenizer files)
-and intentionally separate from Laya weights. No public download or GPU run is performed during
-package import or the base test suite.
-
-### Current status (2026-09-20)
-
-A checkpoint was trained on the RTX 4060 Ti (bf16, 1 warmup + 3 epochs) from the local
-typed-decisions set (1035 train / 285 validation, local + public + synthetic) with the public
-`test` split held out, and saved to `checkpoints/local-distilbert` (float16, 192-dim head).
-Held-out evaluation (400 test examples, 2000 prediction records) reports validation accuracy 0.56,
-ECE 0.0392, and deterministic-rule precedence 13/13. The advisory-only gates that have support
-pass (calibration, deterministic guard precedence); the modality/risk gates report `support=0`
-because the public test set carries no `loop_state`/`next_hand`/`high_risk_code`/`modality`
-fields, which is a data-coverage gap, not a model-quality failure. No gate authorizes execution.
-The full suite is green (84 passed, 2 skipped, 44 subtests) and the deterministic loop gate is
-backend-independent.
-
-The trained backend is deployed as the systemd user unit `jev-distilbert.service`
-(loopback-only, `Restart=on-failure`) serving `127.0.0.1:8093` with
-`JEV_DISTILBERT_MODEL_PATH=checkpoints/local-distilbert` and `JEV_DISTILBERT_DEVICE=cuda`.
-The old Laya sidecar on `127.0.0.1:8091` (`laya-loop-gate.service`) is untouched.
-
-Held-out temperature calibration (2026-09-20): the temperature was re-fitted on the
-public test split (400 examples, 2000 records, never seen in training) via
-`fit_temperature()` and the fit is stable (bootstrap mean 0.97, std 0.046, 100 resamples).
-The fitted temperature is 1.0 (held-out NLL 1.0128 both before and after), so the model is
-already well-calibrated and the advisory probabilities are unchanged by the calibration
-pass; the deterministic guard precedence stays 13/13. The fitted temperature is stored in
-`checkpoints/local-distilbert/jev_laya_config.json` (`calibration.temperature`) and the
-serving backend divides logits by it before softmax (default 1.0 when absent, so older
-checkpoints still load). The held-out before/after comparison, per-kind metrics, and the
-bootstrap stability are recorded in `reports/calibration.json` (run via
-`python -m jev_laya_free.trainer calibrate`).
-
-### Capability benchmark data
-
-The public typed-decisions dataset labels only the `progress` question, so the other 11
-capability families (model routing, confidence action, tool screening, completion, skill
-selection, compaction, citation, RAG filtering, semantic find, composite scoring, intent
-routing) had no held-out labels. The trainer's capability-benchmark builder generates a
-small, fully deterministic labeled fixture for every capability family, with a deterministic
-three-way split (train / validation / held-out test) that has no state or question leakage
-between splits.
-
-Regeneration is a pure function of the seed: the same seed always produces byte-identical
-JSONL, and no external service, network call, or secret is required.
-
-```bash
-# In the trainer environment (not this package):
-# Smoke fixture (default): 12 capabilities x 7 scenarios x 5 variants = 420 examples.
-python -m jev_laya_free.trainer capability-benchmark \
-  --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 \
-  --output-dir data/capability-benchmark
-
-# Full fixture: 12 x 7 x 76 = 6384 examples total — 4476 train, 1272 validation, and
-# a 636-example held-out test split (53 per capability). The 1908 figure is the
-# combined validation+test support (159 per capability), not the test split size.
-python -m jev_laya_free.trainer capability-benchmark \
-  --seed 20260920 --variants 76 --output-dir data/capability-benchmark-full
-```
-
-Every gold label is **advisory**: the model output is a probability distribution over the
-question's criteria, and deterministic code owns the thresholds and fail-open behavior (see
-`taxonomy.CATALOG`). A gold label never turns a deterministic gate on or off by itself.
-Labels are curated from the documented capability policy (the scenario matrix in
-`capability_benchmark.GOLD`), not fabricated external Jev measurements; every example carries
-`metadata.label_rationale` and `metadata.provenance` so a label can be audited without leaving
-the repository.
-
-The large split JSONL files are kept out of Git (regenerable from the seed); the checked-in
-`capability-benchmark-manifest.json` and `capability-benchmark-sample.jsonl` for each fixture
-record the coverage, file checksums, fixture class, and the regeneration command.
-
-### Capability-benchmark checkpoint (2026-09-20)
-
-A second checkpoint was trained on the RTX 4060 Ti (bf16, 1 warmup + 3 epochs) from the
-**full** capability-benchmark train split (4476 train / 1272 validation) with the held-out
-test split (636 examples, 53 per capability) never seen in training, and saved to
-`checkpoints/capability-distilbert` (float16, 192-dim head). This checkpoint is the one
-evaluated for the per-capability report, and it is a substantial improvement over the
-previous hybrid-data checkpoint on the same held-out test split:
-
-| Metric | previous (`local-distilbert`) | capability (`capability-distilbert`) | delta |
-| --- | --- | --- | --- |
-| accuracy | 0.1164 | 0.2830 | +0.1667 |
-| NLL | 1.3419 | 0.9585 | -0.3834 |
-| Brier | 0.8746 | 0.5901 | -0.2845 |
-| ECE | 0.4533 | 0.2289 | -0.2244 |
-
-Per-capability held-out accuracy (53 examples each, never seen in training):
-citation 0.87, semantic_find 0.87, completion 1.00, model_routing 0.13, intent_routing 0.13,
-rag_filter 0.13, composite 0.13, tool_screening 0.13, compaction 0.00, confidence_action 0.00,
-skill_selection 0.00, progress 0.00. The single shared DistilBERT head learns binary
-(noul) decisions well (citation, semantic_find, completion) but not multi-option routing
-(choice/score types remain low) — a real model limitation, not a data gap. The only
-regression versus the previous checkpoint is `progress` (0.87 → 0.00): the previous
-checkpoint was tuned on the public typed-decisions set that labels only `progress`, so it
-overfit that one family at the cost of the other eleven.
-
-Held-out temperature calibration (2026-09-20): the temperature was re-fitted on the
-capability-benchmark test split (636 examples, 53 per capability, never seen in training) via
-`fit_temperature()` and the fit is stable (bootstrap 200 resamples, seed 20260920). Because
-the temperature is fitted on the held-out test split itself, the checkpoint's held-out
-metrics are post-hoc test calibration, not raw held-out quality — label them accordingly
-when comparing checkpoints. The fitted temperature is
-1.1875 (held-out NLL 0.9598 before → 0.9585 after). The fitted temperature is stored in
-`checkpoints/capability-distilbert/jev_laya_config.json` (`calibration.temperature`) and the
-serving backend divides logits by it before softmax (default 1.0 when absent, so older
-checkpoints still load). The held-out before/after comparison, per-kind metrics, and the
-bootstrap stability are recorded in `reports/calibration-capability.json` (run via
-`python -m jev_laya_free.trainer calibrate` in the trainer environment).
-
-`reports/final-capabilities.json` is **regenerated** (not hand-maintained) by the
-trainer's `regenerate_final_capabilities` script, which loads both checkpoints, evaluates
-each at
-its own persisted serving temperature on the held-out test split, computes per-capability
-accuracy/NLL/Brier/ECE/RPS, runs a 200-resample bootstrap for stability, and records the
-deterministic guard precedence. The full regeneration command (train → calibrate → report)
-is recorded in `reports/final-capabilities.json` under `regeneration_command`.
-
-The `capability-distilbert` checkpoint weights (`head.pt`, tokenizer files, `evaluation.json`)
-are kept out of Git (regenerable from the seed); only `jev_laya_config.json` is committed,
-matching the `local-distilbert` convention. No Laya weights or secrets are committed.
+The offline benchmark smoke (`scripts/benchmark.py --backend offline`) and the
+rules-backend benchmark use the same normalized request schema for the 12
+capability families and the legacy workflow questions. They report schema
+coverage, deterministic guard behavior, and transport outcomes — never a
+learned-model quality claim. See [docs/BENCHMARK.md](docs/BENCHMARK.md) for
+the exact commands and interpretation, and
+[docs/MULTIMODAL_BENCHMARK.md](docs/MULTIMODAL_BENCHMARK.md) for the offline
+multimodal fixture set and its provenance boundaries.
 
 ## Bounds and failures
 
@@ -561,20 +400,17 @@ safety precedence. No private traces, real model weights, hosted calls, or runni
 
 | Artifact | What it records |
 | --- | --- |
-| [docs/BENCHMARK.md](docs/BENCHMARK.md) | How to run the offline smoke, rules-backend, and full held-out benchmarks, and how to interpret accuracy, ECE, NLL, Brier, support, latency, and guard metrics. |
+| [docs/BENCHMARK.md](docs/BENCHMARK.md) | How to run the offline smoke and rules-backend benchmarks, and how to interpret schema validity, latency, guard, and fail-open metrics. |
 | [docs/MULTIMODAL_BENCHMARK.md](docs/MULTIMODAL_BENCHMARK.md) | The offline multimodal fixture set (JEV-MM-15): modalities, splits, leakage checks, the fail-closed acceptance gates, hard-negative confusions, and raw vs. calibrated metrics. A fixture set, not a model-quality claim. |
-| [docs/jev-hermes-integration.md](docs/jev-hermes-integration.md) | Architecture and integration: typed questions, DistilBERT advisory layer, deterministic guard, workflow adapter, loopback service. |
-| [reports/final-capabilities.json](reports/final-capabilities.json) | Per-capability held-out accuracy/NLL/Brier/ECE/RPS for the full 12-capability catalog, previous-checkpoint comparison, bootstrap stability, and deterministic guard precedence (regenerated, not hand-maintained). |
-| [reports/calibration-capability.json](reports/calibration-capability.json) | Held-out temperature fit (1.1875), before/after NLL, per-kind metrics, and bootstrap stability. |
-| [reports/jev-comparison.md](reports/jev-comparison.md) / [reports/jev-comparison.json](reports/jev-comparison.json) | Direct, source-grounded Jev comparison with explicit unavailable-runtime boundary; no invented Jev quality numbers. |
+| [docs/jev-hermes-integration.md](docs/jev-hermes-integration.md) | Architecture and integration: typed questions, advisory backends, deterministic guard, workflow adapter, loopback service. |
+| [reports/jev-offline-smoke.json](reports/jev-offline-smoke.json) | Committed offline smoke result: schema validity, deterministic guard behavior, and fail-open semantics for the 12-capability fixture. |
+| [reports/jev-mm17-shadow-verification.md](reports/jev-mm17-shadow-verification.md) | Shadow-verification evidence for the Qwen backend path (JEV-MM-17) with preserved 8093/8091 boundaries. |
 
-The benchmark guide ([docs/BENCHMARK.md](docs/BENCHMARK.md)) documents the exact
-`capability-benchmark` command for the full fixture (`--variants 76`; there is no `--full`
-flag), the 636-example held-out test split (53 per capability; 1908 is the combined
-validation+test support), and the post-hoc test-calibration caveat. Offline results report
-schema coverage only; learned-model quality comes from the model evaluation scripts and must
-label raw versus post-hoc calibration. Rules results report deterministic behavior and
-transport/schema outcomes, not Jev-model accuracy.
+The offline smoke benchmark reports schema coverage only; rules results report
+deterministic behavior and transport/schema outcomes, not learned-model
+quality. A learned-model quality claim requires held-out support from the
+separate training environment and must label raw versus post-hoc
+calibration.
 
 ### Compatibility matrix
 
@@ -625,54 +461,17 @@ unchanged and authoritative. Artifact response usage is restricted to the
 standard token counts and broker-generated artifact ids, pages, and truncation
 flags; backend usage extras are discarded. Raw bytes and filesystem paths are
 never serialized by the broker or server.
-Offline multimodal dataset preparation and source exclusions are documented in
-[docs/DATASETS.md](docs/DATASETS.md). The converter records provenance, preserves
-causal episode splits, and keeps local traces out of the default public build.
-### Offline multimodal acceptance
+Artifact references are validated by the broker before any backend sees them;
+the offline multimodal preprocessing and provenance boundaries are documented
+in [docs/DATASETS.md](docs/DATASETS.md).
+### Offline acceptance
 
-`python -m jev_laya_free.trainer evaluate --predictions predictions.jsonl
---output acceptance.json --require-acceptance` emits the existing metrics plus an
-`acceptance` report and exits 1 if any required gate fails. Without
-`--require-acceptance`, the existing reporting exit behavior is preserved.
-`--acceptance-config thresholds.json` accepts fields from
-`training.acceptance.AcceptanceConfig`; the resolved configuration is included in
-the report. This is a bounded offline capability check, never execution authority.
-The deterministic guard remains authoritative; model outputs cannot authorize
-writes, retries, or stops.
-
-Inputs may be existing typed prediction records, with `question_name`, `labels`
-(in probability order), `label_index`, `probabilities`, and `modality`, or paired
-JSON rows such as:
-
-```json
-{"modality":"pdf","gold":{"loop_state":"repeat_without_progress","next_hand":"render_pdf_page"},"predictions":{"loop_state":"progress","next_hand":"extract_pdf_text"}}
-```
-
-Hermes `gold.loop_state` and normalized typed loop-state targets are authoritative
-for repeat labels. Unrelated boolean questions are not repeat predictions.
-Explicit legacy `expected_repeat`/`predicted_repeat` and
-`expected_hand`/`predicted_hand` remain supported. High-risk code requires explicit
-`gold.high_risk_code`/`predictions.high_risk_code` booleans (or
-`expected_high_risk_code`/`predicted_high_risk_code`); review status alone does not
-establish code risk. Modality can also come from metadata or state.
-
-Defaults require guard precedence 100%, repeat and high-risk code recall .95 /
-precision .90, next-hand macro-F1 .85 separately for code/PDF/image, PDF extract
-versus render macro-F1 .90, image inspection recall .95, and top-label ECE <= .10
-(ten equal-width bins). These are explicit initial policy thresholds, not measured
-model claims. Each required metric needs at least `min_support=1`; binary recall
-needs positive support. Missing evidence fails rather than passing vacuously.
-Macro-F1 includes observed gold/predicted labels; the PDF gate always includes
-both extract and render. Confusion matrices use gold rows and prediction columns.
-Calibration requires typed probability records and reports pooled ECE, NLL, and
-Brier score. Do not pool incompatible label spaces when interpreting its numeric
-index confusion matrix.
-
-Optional `latency_ms` and `vram_mb` samples are reported without a gate by default.
-Set `max_latency_p95_ms` and `max_vram_mb` to require measured nearest-rank p95
-latency and peak sampled VRAM. Measurements must be provided by the caller;
-this harness does not benchmark hardware or import a model. Keep samples in
-consistent units and avoid duplicating per-request measurements across questions.
+Offline acceptance gates (repeat/high-risk-code recall, next-hand macro-F1,
+PDF extract-vs-render F1, image-inspection recall, top-label ECE, guard
+precedence) are evaluated in the separate training environment, not in this
+runtime. This runtime never runs an acceptance gate: it serves, probes, and
+fails closed. The deterministic guard remains authoritative; model outputs
+cannot authorize writes, retries, or stops.
 
 ## Shadow verification and preserved service boundaries
 
@@ -692,8 +491,8 @@ PYTHONPATH=src JEV_QWEN_BASE_URL=http://127.0.0.1:8080 JEV_QWEN_TIMEOUT=60 \
 ss -ltnp | grep -E ':8094\b'
 
 # 3. Run the live smoke (18/18) and the offline benchmark (no model/network).
-#    (multimodal-smoke lives in the trainer module — a separate environment.)
-python -m jev_laya_free.trainer multimodal-smoke --output-dir <scratch>/offline
+#    (The offline smoke is the runtime benchmark script; training is not shipped.)
+PYTHONPATH=src python scripts/benchmark.py --backend offline --fixture fixtures/benchmark-smoke.jsonl
 
 # 4. Confirm the live services are unchanged (same PIDs/listeners).
 ss -ltnp | grep -E ':8093\b|:8091\b'
@@ -728,8 +527,8 @@ shadow in this release.
   The fake/injected tests are the deterministic contract; the live probe is
   reported as-is and does not substitute for them.
 - **No model download or deployment.** The base package is standard-library
-  only and does not download weights or run training; training lives in the
-  trainer module in a separate environment. Checkpoints are installed via a
+  only and does not download weights; training is not shipped with this
+  release and runs in a separate environment. Checkpoints are installed via a
   checksummed manifest (`goblin-jev download-checkpoint`).
 - **Troubleshooting:**
   - `503 backend unavailable` with no artifact roots set is expected (clean, no

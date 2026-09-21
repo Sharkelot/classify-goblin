@@ -12,6 +12,7 @@ Two independent checks:
 
 These checks never touch the network and never download model weights.
 """
+import re
 import subprocess
 import tempfile
 import unittest
@@ -192,6 +193,127 @@ class ReleaseSurfaceTests(unittest.TestCase):
         for f in ("jev_laya_free/multimodal/", "jev_laya_free/profile_assessor/"):
             if not any(p.startswith(f) for p in installed):
                 self.fail(f"installed: required runtime surface missing: {f}")
+
+
+# --- Stale training documentation checks (consumer docs) ---
+
+CONSUMER_DOCS = (
+    "README.md",
+    "src/jev_laya_free/multimodal/README.md",
+)
+
+# Executable training/data-generation instructions that must never appear in
+# consumer documentation, with or without context.
+ALWAYS_BANNED = (
+    r"python\s*-m\s*jev_laya_free\.training",
+    r"hf\s+download",
+    r"Hugging\s+Face",
+    r"requirements-training\.txt",
+    r"scripts/calibrate_temperature\.py",
+    r"scripts/per_capability_eval\.py",
+    r"scripts/regenerate_final_capabilities\.py",
+    r"scripts/setup_env\.sh",
+    r"training\.acceptance\.AcceptanceConfig",
+    r"--variants\s+76",
+    r"--include-synthetic",
+    r"--public-dataset",
+    r"--local-traces",
+    r"JEV_DATA_DIR",
+    r"JEV_MODEL_DIR",
+    r"reports/final-capabilities\.json",
+    r"reports/calibration-capability\.json",
+    r"reports/calibration\.json",
+    r"reports/evaluation_calibrated\.json",
+    r"reports/evaluation\.json",
+    r"reports/jev-comparison\.(md|json)",
+    r"reports/predictions\.jsonl",
+    r"reports/synthetic\.json",
+)
+
+# Trainer module/command references that are allowed only when the same line
+# carries an explicit "not shipped / does not exist / separate environment"
+# limitation marker.
+CONTEXT_GATED = (
+    r"jev_laya_free\.trainer",
+    r"\btrainer\b",
+)
+
+ALLOW_MARKERS = (
+    "not shipped",
+    "does not exist",
+    "not part of this release",
+    "not in this repository",
+    "separate training environment",
+    "non-distributed",
+    "no in-repo training command",
+)
+
+# Required README surfaces (acceptance: Goblin JEV branding + consumer guidance).
+README_REQUIRED = (
+    "# Goblin JEV",
+    "goblin-jev download-checkpoint",
+    "scripts/benchmark.py --backend offline",
+    "JEV_LOCAL_API_KEY",
+    "JEV_ARTIFACT_ROOTS",
+    "/v1/systemone",
+    "jev-laya-free",
+    "from jev_laya_free import",
+    "## Limitations",
+    "modality",
+    "pip install .",
+)
+
+
+def _consumer_doc_paths():
+    paths = [ROOT / p for p in CONSUMER_DOCS]
+    docs_dir = ROOT / "docs"
+    if docs_dir.is_dir():
+        paths.extend(sorted(docs_dir.glob("*.md")))
+    return paths
+
+
+class StaleTrainingDocsTests(unittest.TestCase):
+    def test_consumer_docs_have_no_stale_training_references(self):
+        for path in _consumer_doc_paths():
+            if not path.is_file():
+                self.skipTest(f"consumer doc missing: {path}")
+            for line_no, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1
+            ):
+                lowered = line.lower()
+                for pattern in ALWAYS_BANNED:
+                    if re.search(pattern, line, re.IGNORECASE):
+                        self.fail(
+                            f"{path.name}:{line_no}: stale training "
+                            f"reference {pattern!r}: {line}"
+                        )
+                for pattern in CONTEXT_GATED:
+                    if re.search(pattern, line, re.IGNORECASE):
+                        if not any(marker in lowered for marker in ALLOW_MARKERS):
+                            self.fail(
+                                f"{path.name}:{line_no}: trainer reference "
+                                f"{pattern!r} without a limitation marker: {line}"
+                            )
+
+    def test_readme_leads_with_goblin_jev_branding_and_consumer_surfaces(self):
+        text = (ROOT / "README.md").read_text(encoding="utf-8")
+        first_heading = next(
+            (line for line in text.splitlines() if line.strip().startswith("# ")),
+            "",
+        )
+        self.assertEqual(first_heading, "# Goblin JEV")
+        for required in README_REQUIRED:
+            self.assertIn(required, text)
+
+    def test_readme_states_training_not_shipped_without_in_repo_commands(self):
+        text = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("not shipped", text.lower())
+        # The limitation statement must not link to nonexistent in-repo commands.
+        for pattern in ALWAYS_BANNED:
+            self.assertIsNone(
+                re.search(pattern, text, re.IGNORECASE),
+                f"README limitation wording references {pattern!r}",
+            )
 
 
 if __name__ == "__main__":
