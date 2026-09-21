@@ -31,7 +31,7 @@ Use `--backend laya --checkpoint /path/to/checkpoint` only with an already-runni
 The full fixture is generated deterministically by the training benchmark builder. The `capability-benchmark` command has no `--full` flag; the full fixture is selected with `--variants 76` (the default `--variants 5` produces the 420-example smoke fixture). After preparing it, run:
 
 ```bash
-PYTHONPATH=src python -m jev_laya_free.training capability-benchmark --variants 76 --output-dir data/capability-benchmark-full
+python -m jev_laya_free.trainer capability-benchmark --variants 76 --output-dir data/capability-benchmark-full
 PYTHONPATH=src python scripts/benchmark.py --backend rules --fixture data/capability-benchmark-full/capability-benchmark-test.jsonl
 ```
 

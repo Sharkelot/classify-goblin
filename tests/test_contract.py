@@ -113,6 +113,32 @@ class HTTPTests(unittest.TestCase):
                     self.assertEqual(result.usage.input_tokens, 0)
                     self.assertTrue(result.request_id)
 
+    def test_choice_and_score_label_order_preserved_roundtrip(self):
+        # S6/T3: criteria/label order is preserved server->client byte-for-byte.
+        # Choice options are an ordered dict; score levels are an ordered array
+        # with an ordinal-string legend. Neither may be reordered or sorted.
+        ordered = {
+            'pick': Choice(instructions='Pick',
+                           options={'zeta': 'last', 'alpha': 'first', 'mid': 'middle'}),
+            'grade': Score(instructions='Grade',
+                          criteria=['zero', 'one', 'two']),
+        }
+        with running() as (_, url):
+            with TypeSafeClient(base_url=url) as client:
+                result = client.systemOne(state='code', questions=ordered)
+                # Choice: probability keys keep the request insertion order.
+                self.assertEqual(list(result.answers.pick.probabilities),
+                                ['zeta', 'alpha', 'mid'])
+                # Score: legend is keyed by ordinal string, in criteria order.
+                self.assertEqual(list(result.answers.grade.legend), ['0', '1', '2'])
+                self.assertEqual(result.answers.grade.legend['0'], 'zero')
+                self.assertEqual(result.answers.grade.legend['2'], 'two')
+                # Positional targets (score) are not reordered: weighted mean
+                # must match the ordinal positions, not a re-sorted set.
+                self.assertEqual(result.answers.grade.score,
+                                sum(int(k) * v for k, v in
+                                    result.answers.grade.probabilities.items()))
+
     def test_auth_and_errors(self):
         with running(token='test-key') as (server, url):
             body = schema.dumps({'model': 'local-default', 'state': '', 'questions': QUESTIONS})
@@ -236,6 +262,8 @@ class BackendWorkflowTests(unittest.TestCase):
         for state, hand in [({'modality': 'code'}, 'inspect_code'), ({'modality': 'code', 'test_needed': True}, 'run_test'),
                             ({'modality': 'pdf'}, 'extract_pdf_text'), ({'modality': 'pdf', 'extraction_quality': 'partial'}, 'render_pdf_page'),
                             ({'modality': 'image'}, 'inspect_image'),
+                            ({'modality': 'video'}, 'inspect_video'),
+                            ({'modality': 'audio'}, 'transcribe_audio'),
                             ({'evidence_sufficient': True, 'source_grounded': True, 'source_digest': 'hash', 'location': 'p1'}, 'synthesize')]:
             self.assertEqual(decide(state)['route'], {'hand': hand, 'executor': 'qwen'})
         self.assertEqual(decide({'modality': 'image', 'same_action_streak': 3})['route']['executor'], None)
@@ -259,7 +287,7 @@ class BackendWorkflowTests(unittest.TestCase):
     def test_workflow_full_fingerprints_and_strict_flags(self):
         state = {'same_action_streak': 3, 'result': 'x'*2000+'a', 'previous_result': 'x'*2000+'b'}
         self.assertEqual(guard(state)['decision'], 'allow')
-        for state in ({'terminal': 'false'}, {'same_action_streak': True}, {'modality': 'audio'}):
+        for state in ({'terminal': 'false'}, {'same_action_streak': True}, {'modality': 'hologram'}):
             with self.assertRaises(ValidationError):
                 decide(state)
 

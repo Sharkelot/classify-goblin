@@ -1,0 +1,10 @@
+{
+  "task_kind": "design",
+  "required_modalities": ["text", "vision"],
+  "min_context": 0,
+  "required_capabilities": ["image-generation"],
+  "workspace_repo": null,
+  "risk": "low",
+  "urgency": "normal",
+  "cost_hint": "medium"
+}

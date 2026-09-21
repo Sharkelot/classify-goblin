@@ -15,7 +15,9 @@ MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
 MIMES = {'image': {'image/png', 'image/jpeg', 'image/webp'},
          'pdf': {'application/pdf'}, 'text': {'text/plain'},
          'code': {'text/plain', 'text/x-python', 'application/javascript',
-                  'text/javascript', 'application/json'}}
+                  'text/javascript', 'application/json'},
+         'video': {'video/mp4', 'video/webm'},
+         'audio': {'audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp3'}}
 
 
 class ArtifactSelectionError(ValueError):

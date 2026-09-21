@@ -1,0 +1,10 @@
+{
+  "task_kind": "video-review",
+  "required_modalities": ["text", "vision"],
+  "min_context": 0,
+  "required_capabilities": ["video-review"],
+  "workspace_repo": null,
+  "risk": "low",
+  "urgency": "normal",
+  "cost_hint": "low"
+}

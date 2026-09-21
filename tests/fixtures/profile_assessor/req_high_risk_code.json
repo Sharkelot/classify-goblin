@@ -1,0 +1,10 @@
+{
+  "task_kind": "code",
+  "required_modalities": ["text"],
+  "min_context": 0,
+  "required_capabilities": ["code-review"],
+  "workspace_repo": null,
+  "risk": "high",
+  "urgency": "high",
+  "cost_hint": "medium"
+}

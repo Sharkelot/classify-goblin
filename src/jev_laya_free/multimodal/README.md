@@ -51,3 +51,15 @@ image pixels. They do not impose CPU deadlines on third-party parsers or trusted
 callbacks. For untrusted artifacts, the caller must isolate parsing and enforce
 process memory/time limits. Invalid limit configuration raises `ValueError` at
 construction; artifact/parser/hook failures return explicit unavailable reasons.
+
+## Video and audio (JEV-MM-13)
+
+`prepare_video` and `prepare_audio` are probe-gated and fail-closed: without a
+verified probe they return `unavailable` (`video_not_verified` /
+`audio_not_verified`) without decoding. Video is frame-sampled at 2 fps with a
+16-frame budget, a 120 s duration limit, and a 4,096 × 2,160 per-frame
+resolution limit (see `docs/QWEN_BACKEND.md` for the full limits and failure
+codes). Audio gates on a MIME allow-list (WAV/MP3), parses WAV headers to
+require PCM, and never claims a transcript when the endpoint reports audio as
+unavailable. Both return JSON-compatible `MediaPayload` records; raw media bytes
+never enter the record or its `repr`.

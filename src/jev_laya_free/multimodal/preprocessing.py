@@ -25,14 +25,15 @@ class Limits:
     max_pages: int = 100
     max_selected_pages: int = 8
     max_pixels: int = 16_000_000
+    max_model_pixels: int = 0
     max_nodes: int = 20_000
     max_snippets: int = 16
     snippet_chars: int = 240
 
     def __post_init__(self):
-        for value in vars(self).values():
-            if type(value) is not int or value < 1:
-                raise ValueError('limits must be positive integers')
+        for name, value in vars(self).items():
+            if type(value) is not int or value < (0 if name == 'max_model_pixels' else 1):
+                raise ValueError('limits must be positive integers (max_model_pixels may be 0)')
 
 
 DEFAULT_LIMITS = Limits()

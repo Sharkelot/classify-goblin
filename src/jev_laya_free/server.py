@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import schema
 from .artifacts import ArtifactBroker, ArtifactSelectionError
 from .backends import DistilBertBackend, LayaBackend, RulesBackend
+from .multimodal.qwen_service import OpenAICompatClient, QwenArtifactBackend
 
 
 class LocalServer(ThreadingHTTPServer):
@@ -139,12 +140,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=('127.0.0.1', 'localhost'), default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8093)
-    parser.add_argument('--backend', choices=('rules', 'laya', 'distilbert', 'local-distilbert'), default='rules')
+    parser.add_argument('--backend', choices=('rules', 'laya', 'distilbert', 'local-distilbert', 'qwen'), default='rules')
     args = parser.parse_args()
     if args.backend == 'laya':
         backend = LayaBackend()
     elif args.backend in ('distilbert', 'local-distilbert'):
         backend = DistilBertBackend()
+    elif args.backend == 'qwen':
+        # Explicit endpoint/model/timeout; the credential is environment-resolved
+        # (JEV_QWEN_API_KEY) and never printed.
+        endpoint = os.environ.get('JEV_QWEN_BASE_URL', 'http://127.0.0.1:8080')
+        timeout = int(os.environ.get('JEV_QWEN_TIMEOUT', '30'))
+        backend = QwenArtifactBackend(client=OpenAICompatClient(
+            base_url=endpoint, timeout=timeout))
     else:
         backend = RulesBackend()
     server = LocalServer((args.host, args.port), backend, os.environ.get('JEV_LOCAL_API_KEY'))

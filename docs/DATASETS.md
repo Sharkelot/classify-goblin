@@ -3,7 +3,7 @@
 Run from the repository root (no downloads or live services):
 
 ```sh
-PYTHONPATH=src python -m jev_laya_free.training.conversion \
+python -m jev_laya_free.trainer.conversion \
   --external-root /home/coreys/models/jev-laya-free/data/external \
   --out outputs/converted-public
 ```

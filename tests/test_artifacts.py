@@ -108,6 +108,17 @@ class ArtifactTests(unittest.TestCase):
             self.assertEqual(status, 503)
             self.assertNotIn('secret', schema.dumps(body))
 
+    def test_no_root_stability_is_clean_503(self):
+        # A6/T3: with no artifact roots configured the server stays stable —
+        # a clean 503, no traceback, and no filesystem/secret leakage.
+        with patch.dict(os.environ, {'JEV_ARTIFACT_ROOTS': ''}):
+            with running() as (server, url):
+                status, body = post(server, schema.dumps(self.body))
+                self.assertEqual(status, 503)
+                self.assertIn('backend unavailable', body['error']['message'])
+                self.assertNotIn('secret', schema.dumps(body))
+                self.assertNotIn('JEV_ARTIFACT_ROOTS', schema.dumps(body))
+
 
 if __name__ == '__main__':
     unittest.main()

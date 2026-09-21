@@ -1,8 +1,12 @@
-"""Optional DistilBERT decision model shared by training and local inference.
+"""Optional DistilBERT decision model for local inference.
 
 This module deliberately imports PyTorch and Transformers inside the functions that need
 them.  Importing :mod:`jev_laya_free` therefore remains a standard-library operation.
 The checkpoint format is local and explicit; it is not a hosted Jev/Laya checkpoint.
+
+Only the inference surface lives here: checkpoint loading, configuration, prompt
+reconstruction, and the decision head.  Training, base-model download, and checkpoint
+mutation are not part of this release and live in the trainer.
 """
 
 from __future__ import annotations
@@ -67,8 +71,7 @@ def _torch_import():
         import torch.nn as nn
     except ImportError as exc:  # pragma: no cover - exercised in environments without extras
         raise RuntimeError(
-            "local-distilbert requires the optional training dependencies; "
-            "install jev-laya-free[training] in a separate environment"
+            "local-distilbert requires PyTorch; install torch in a separate environment"
         ) from exc
     return torch, nn
 
@@ -78,8 +81,7 @@ def _transformers_import():
         from transformers import AutoModel, AutoTokenizer
     except ImportError as exc:  # pragma: no cover - exercised in environments without extras
         raise RuntimeError(
-            "local-distilbert requires transformers; "
-            "install jev-laya-free[training] in a separate environment"
+            "local-distilbert requires transformers; install transformers in a separate environment"
         ) from exc
     return AutoModel, AutoTokenizer
 
@@ -122,15 +124,6 @@ def build_model(encoder, *, head_dim: int = DEFAULT_HEAD_DIM,
     return DistilBertDecisionModel()
 
 
-def load_base_components(model_name: str = DEFAULT_BASE_MODEL, *, local_files_only: bool = False):
-    """Load an encoder/tokenizer from the local Transformers cache or Hub."""
-
-    AutoModel, AutoTokenizer = _transformers_import()
-    encoder = AutoModel.from_pretrained(model_name, local_files_only=local_files_only)
-    tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=local_files_only)
-    return encoder, tokenizer
-
-
 def checkpoint_config(path: str | Path) -> dict[str, Any]:
     config_path = Path(path) / "jev_laya_config.json"
     try:
@@ -140,47 +133,6 @@ def checkpoint_config(path: str | Path) -> dict[str, Any]:
     if config.get("format") != CHECKPOINT_VERSION:
         raise RuntimeError("unsupported local-distilbert checkpoint format")
     return config
-
-
-def save_checkpoint(model, tokenizer, path: str | Path, *, base_model: str,
-                    max_length: int = DEFAULT_MAX_LENGTH, head_dim: int = DEFAULT_HEAD_DIM,
-                    max_options: int = DEFAULT_MAX_OPTIONS, metadata: Mapping[str, Any] | None = None,
-                    weight_dtype: str = "float16"):
-    """Save encoder, tokenizer, head weights, and a small auditable config."""
-
-    torch, _ = _torch_import()
-    path = Path(path)
-    path.mkdir(parents=True, exist_ok=True)
-    if weight_dtype not in {"float32", "float16", "bfloat16"}:
-        raise ValueError("weight_dtype must be float32, float16, or bfloat16")
-    if weight_dtype == "float16":
-        model.half()
-    elif weight_dtype == "bfloat16":
-        model.bfloat16()
-    else:
-        model.float()
-    encoder_path = path / "encoder"
-    encoder_path.mkdir(exist_ok=True)
-    model.encoder.save_pretrained(encoder_path, safe_serialization=True)
-    tokenizer.save_pretrained(path)
-    torch.save(
-        {"projection": model.projection.state_dict(), "output": model.output.state_dict()},
-        path / "head.pt",
-    )
-    config = {
-        "format": CHECKPOINT_VERSION,
-        "base_model": base_model,
-        "max_length": int(max_length),
-        "head_dim": int(head_dim),
-        "max_options": int(max_options),
-        "max_choice_options": 8,
-        "max_score_options": 10,
-        "weight_dtype": weight_dtype,
-        "metadata": dict(metadata or {}),
-    }
-    (path / "jev_laya_config.json").write_text(
-        json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
 
 
 def calibration_temperature(path: str | Path) -> float:
@@ -196,33 +148,6 @@ def calibration_temperature(path: str | Path) -> float:
     if not math.isfinite(value) or value <= 0:
         return 1.0
     return value
-
-
-def save_calibration(path: str | Path, calibration: Mapping[str, Any]) -> dict[str, Any]:
-    """Merge a fitted calibration block into an existing checkpoint config.
-
-    The temperature is advisory: the deterministic workflow guard remains
-    authoritative, so a missing block simply means temperature 1.0 at inference.
-    """
-
-    path = Path(path)
-    config = checkpoint_config(path)
-    temperature = float(calibration["temperature"])
-    if not math.isfinite(temperature) or temperature <= 0:
-        raise ValueError("calibration temperature must be a positive finite number")
-    split = calibration.get("fitted_on") or calibration.get("split")
-    if isinstance(split, (list, tuple)):
-        split = "+".join(str(item) for item in split)
-    config["calibration"] = {
-        "temperature": temperature,
-        "nll_before": float(calibration.get("nll_before", 0.0)),
-        "nll_after": float(calibration.get("nll_after", 0.0)),
-        "fitted_on": str(split or "validation"),
-    }
-    (path / "jev_laya_config.json").write_text(
-        json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    return config
 
 
 def _load_torch_state(path: Path):
@@ -271,6 +196,5 @@ def load_checkpoint(path: str | Path, *, device: str | None = None, local_files_
 __all__ = [
     "CHECKPOINT_VERSION", "DEFAULT_BASE_MODEL", "DEFAULT_MAX_LENGTH", "DEFAULT_HEAD_DIM",
     "DEFAULT_MAX_OPTIONS", "compact_text", "render_question_prompt", "build_model",
-    "load_base_components", "load_checkpoint", "save_checkpoint", "checkpoint_config",
-    "save_calibration", "calibration_temperature",
+    "load_checkpoint", "checkpoint_config", "calibration_temperature",
 ]

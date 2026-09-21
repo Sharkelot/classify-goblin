@@ -1,0 +1,10 @@
+{
+  "task_kind": "general",
+  "required_modalities": ["text"],
+  "min_context": 0,
+  "required_capabilities": ["telepathy"],
+  "workspace_repo": null,
+  "risk": "low",
+  "urgency": "normal",
+  "cost_hint": "low"
+}

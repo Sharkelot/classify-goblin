@@ -1,0 +1,10 @@
+{
+  "task_kind": "3d",
+  "required_modalities": ["text"],
+  "min_context": 0,
+  "required_capabilities": ["3d-generation"],
+  "workspace_repo": null,
+  "risk": "low",
+  "urgency": "normal",
+  "cost_hint": "low"
+}

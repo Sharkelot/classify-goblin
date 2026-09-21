@@ -1,0 +1,80 @@
+{
+  "snapshot_time": "2026-09-21T00:00:00Z",
+  "valid_assignees": [
+    "3d-goblin",
+    "default",
+    "designer-goblin",
+    "developer-goblin",
+    "luna-goblin",
+    "nsfw-goblin",
+    "video-goblin",
+    "video-review-goblin",
+    "ghost-goblin2"
+  ],
+  "entries": [
+    {
+      "name": "developer-goblin",
+      "on_disk": true,
+      "valid_assignee": true,
+      "description": "coding agent",
+      "description_auto": false,
+      "model_label": "Qwen3.8-MXFP4",
+      "provider_label": "qwen-27b",
+      "context_length": 200000,
+      "modalities": ["text", "vision"],
+      "skill_names": ["autonomous-ai-agents", "software-development"],
+      "capabilities": ["code", "code-review"],
+      "workspace": null,
+      "status": "ok",
+      "snapshot_time": "2026-09-21T00:00:00Z"
+    },
+    {
+      "name": "luna-goblin",
+      "on_disk": true,
+      "valid_assignee": true,
+      "description": "Low-reasoning coder (GPT 5.6 Luna)",
+      "description_auto": false,
+      "model_label": "gpt-5.6-luna-900k",
+      "provider_label": "openai-codex",
+      "context_length": 900000,
+      "modalities": ["text"],
+      "skill_names": ["autonomous-ai-agents", "local-qwen-loop-gate"],
+      "capabilities": ["code"],
+      "workspace": null,
+      "status": "ok",
+      "snapshot_time": "2026-09-21T00:00:00Z"
+    },
+    {
+      "name": "ghost-goblin",
+      "on_disk": false,
+      "valid_assignee": false,
+      "description": "a profile that is not on disk",
+      "description_auto": false,
+      "model_label": "Qwen3.8-MXFP4",
+      "provider_label": "qwen-27b",
+      "context_length": 200000,
+      "modalities": ["text", "vision"],
+      "skill_names": [],
+      "capabilities": ["code"],
+      "workspace": null,
+      "status": "ok",
+      "snapshot_time": "2026-09-21T00:00:00Z"
+    },
+    {
+      "name": "ghost-goblin2",
+      "on_disk": true,
+      "valid_assignee": false,
+      "description": "on disk but not a valid assignee",
+      "description_auto": false,
+      "model_label": "Qwen3.8-MXFP4",
+      "provider_label": "qwen-27b",
+      "context_length": 200000,
+      "modalities": ["text", "vision"],
+      "skill_names": [],
+      "capabilities": ["code"],
+      "workspace": null,
+      "status": "ok",
+      "snapshot_time": "2026-09-21T00:00:00Z"
+    }
+  ]
+}

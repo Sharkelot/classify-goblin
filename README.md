@@ -16,6 +16,37 @@ and must not be used as an intelligent safety classifier. The optional Laya back
 advisory; its reliability must be evaluated on your own data. “Free” refers to this source
 and local operation without a hosted API fee; model licensing and hardware costs are separate.
 
+## Repository status (2026-09-21)
+
+The local artifact broker, typed protocol, deterministic workflow guard, profile assessor,
+and offline benchmark all existed before the Qwen backend was added. What was **unavailable
+until the backend path was verified** is model serving for the multimodal modalities: the
+Qwen artifact backend (`--backend qwen`) was not live-verified until JEV-MM-17 (2026-09-21),
+which started an isolated shadow process on loopback `127.0.0.1:8094` against the local
+Qwen endpoint and confirmed the typed contract end-to-end (18/18 smoke cases). The live
+`127.0.0.1:8093` DistilBERT service and the `127.0.0.1:8091` Laya sidecar were left
+untouched throughout. See `reports/jev-mm17-shadow-verification.md` for the full evidence.
+
+The modality matrix below is from the actual runtime probe (JEV-MM-01 historical +
+JEV-MM-13 + JEV-MM-17 fresh, all against the live loopback Qwen endpoint). It is
+**probe evidence, not an upstream claim**: a modality is "verified" only when the local
+probe exercised it and observed a successful decode.
+
+| Modality | Probe state | Backend support | Evidence |
+|----------|-------------|----------------|----------|
+| text     | verified    | supported      | JEV-MM-17 typed 200 |
+| image    | verified    | supported      | JEV-MM-01 + JEV-MM-17 (image tokens accounted) |
+| video    | verified    | supported      | JEV-MM-13 (`video_url` data URI, 200, `multimodal_tokens.video`) |
+| code     | (new)       | supported      | JEV-MM-17 typed 200 (choice-only through full server) |
+| pdf      | unavailable | supported (declared; probe did not verify) | JEV-MM-12 declared; live verification is a future probe run |
+| audio    | unavailable | fail-closed adapter (`audio_not_verified`) | JEV-MM-13 (HTTP 400 "At most 0 audio(s)") |
+
+`pdf` is declared supported by the backend but its live probe verification is the
+responsibility of a future probe run. `audio` is not supported by the endpoint (no
+transcription route), so the audio adapter is fail-closed: it returns
+`audio_not_verified` rather than a fake success. Unsupported (unknown) modalities fail
+closed with a stable 503 — never a fallback to text.
+
 ## Start locally
 
 Python 3.10+; the base package uses only the standard library. From this directory:
@@ -123,6 +154,33 @@ retries default to 2, with bounded exponential backoff for transport errors and 
 429/502/503/504/529. Validation and auth failures are not retried. The maximum is 5 retries.
 A timeout does not cancel backend inference and is not a whole-call wall-clock deadline.
 
+## Protocol
+
+A minimal, dependency-free wire contract for a loopback typed-decision service, designed
+so a third party can implement an independent client from the spec alone and verify
+compatibility against the reference service.
+
+- **Spec (machine-readable):** [`src/jev_laya_free/protocol.py`](src/jev_laya_free/protocol.py)
+  — constants and validators; the single source of truth. Exercised by
+  [`tests/test_protocol_spec.py`](tests/test_protocol_spec.py).
+- **Human-readable spec:** [`docs/PROTOCOL.md`](docs/PROTOCOL.md) — transport, request,
+  response, error envelope, and the compatibility checklist.
+- **Reference service:** [`src/jev_laya_free/reference_service.py`](src/jev_laya_free/reference_service.py)
+  — a stdlib-only HTTP server implementing the contract with a deterministic lexical
+  backend (not a learned model). Start it with
+  `PYTHONPATH=src python -m jev_laya_free.reference_service --port 8093`.
+- **Independent client:** [`src/jev_laya_free/protocol_client.py`](src/jev_laya_free/protocol_client.py)
+  — written against `protocol.py` only (no import from the reference service), stdlib-only.
+  See [`docs/INDEPENDENT_CLIENT.md`](docs/INDEPENDENT_CLIENT.md).
+- **Compatibility tests:** [`tests/test_reference_service.py`](tests/test_reference_service.py)
+  — full round-trip, error paths, retry behavior, and transport constraints, run against
+  the reference service on a random loopback port.
+
+The protocol reuses the same question/answer schemas, bounds, and error semantics as the
+existing wire contract above, but is defined in a single self-contained module so it can be
+implemented and verified independently. The reference service's deterministic backend is a
+contract proof, not a quality claim.
+
 ## Optional local Laya backend
 
 Install/provide Laya and its compatible ML dependencies separately; this repository neither
@@ -174,63 +232,75 @@ passes supplied state to the local backend; it is not a credential scrubber. Inv
 state raises instead of allowing work. A client outage preserves the deterministic decision.
 This adapter does not configure Hermes, Qwen, DFlash, gateways, or any existing sidecar.
 
+## Local Qwen image/PDF/code typed backend
+
+`jev_laya_free.multimodal.qwen_service.QwenArtifactBackend` is a local-only,
+fail-closed artifact backend: verified in-memory `ResolvedArtifact` bytes
+(image/PDF/code) are converted into a typed JSON decision via the loopback
+OpenAI-compatible Qwen endpoint, validated through `schema.answers`. It is wired
+through `predict_artifacts`, so text-only requests keep their existing behavior.
+Start it with `PYTHONPATH=src python -m jev_laya_free.server --backend qwen`
+(endpoint from `JEV_QWEN_BASE_URL`, default `http://127.0.0.1:8080`; credential
+from `JEV_QWEN_API_KEY`; timeout from `JEV_QWEN_TIMEOUT`). The backend declares
+`SUPPORTED = {image, pdf, code, video}`; `audio` is a fail-closed adapter
+(`audio_not_verified`) and unknown modalities fail closed with a stable 503 —
+never a fallback to text. Usage is sanitized to artifact id/pages/truncation plus
+token counts; no raw bytes, paths, credentials, or provider error bodies cross the
+wire. See [`docs/QWEN_BACKEND.md`](docs/QWEN_BACKEND.md) for the verified vs.
+unavailable modality table and the live probe result.
+
+## Hermes profile assessor (advisory only)
+
+`jev_laya_free.profile_assessor` is an **advisory-only** profile-fit assessment
+for Kanban task routing. It reads a sanitized profile roster snapshot, applies
+deterministic eligibility filters (F1–F7, fail-closed, fixed order), scores
+fit/confidence with a transparent heuristic (not a learned model), and returns a
+verdict. **It never creates, assigns, or runs a task** — the dispatcher
+revalidates the selected profile and owns every side effect.
+
+- **Sanitized metadata:** the roster parser opens only `profile.yaml`,
+  `config.yaml`, and the `skills/` listing. It never touches `.env`, `auth.json`,
+  `memories/`, or `sessions/`. No bytes, raw reasoning, or secret values enter an
+  entry; all output is JSON-serializable.
+- **Deterministic filters F1–F7:** profile on disk, valid assignee, context ≥
+  min (unknown = fail), required modalities declared, required capabilities
+  declared, workspace match (unknown = pass + penalty), status not
+  blocked/unavailable. The prefix property holds.
+- **Abstention and review:** `abstain` when no candidate survives; `review` for
+  high-risk tasks, ambiguous top-two (ε=0.06), low confidence (<0.40), or stale
+  snapshots (>300 s).
+- **Revalidation gate (JEV-MM-14):** `workflow.validate_profile_selection(
+  assessment, fresh_snapshot)` is the deterministic gate a caller must pass before
+  invoking Hermes Kanban. Only a `recommend` verdict is eligible; the selected
+  profile is the first ranked candidate that revalidates to `ok` against a fresh
+  roster snapshot. A stale, missing, or invalid candidate — or any non-recommend
+  verdict — fails closed with `None` (no fallback). The assessor's recommendation
+  is advisory; this revalidation, not the model, owns the assignment.
+- **No-side-effect delegation boundary:** the assessor is a pure function (same
+  roster + request always produces the same output; ties break by name
+  ascending). No model output authorizes execution or delegation.
+
+Full contract, schemas, and usage: [`docs/PROFILE_ASSESSOR.md`](docs/PROFILE_ASSESSOR.md).
+
 ## Optional local DistilBERT training
 
-The repository includes an opt-in, reproducible training path for a DistilBERT-base encoder
-(`distilbert/distilbert-base-uncased`, Apache-2.0, about 67M parameters) with a compact shared
-typed-decision head. The base install stays standard-library only. Install the separate training
-extras in the environment that will own the model cache:
+Training is **not part of this release**. This package ships the inference runtime, the
+typed protocol, artifact security, and the benchmark conformance path. The reproducible
+training path for a DistilBERT-base encoder (`distilbert/distilbert-base-uncased`,
+Apache-2.0, about 67M parameters) with a compact shared typed-decision head lives in the
+**trainer** module. The base install stays standard-library only; the trainer owns its own
+PyTorch/Transformers pins, the clean-venv setup script, and the training/test data.
+
+To train, install the trainer in a separate environment (never the shared ComfyUI
+environment or a global site-packages) and follow its pinned requirements. After training,
+publish a checksummed checkpoint manifest and install it with:
 
 ```bash
-python3 -m pip install -e '.[training]'
+goblin-jev download-checkpoint --manifest <manifest.json> --cache-dir <dir>
 ```
 
-### Reproducible training/test environment
-
-Use a **clean, repository-local venv** for training and tests — never the shared ComfyUI
-environment or a global site-packages. The base package is standard-library only, so only the
-`[training]` stack needs network (PyPI); no credentials or hosted API are required.
-
-```bash
-# Create, install, and verify (pip check) in one step:
-scripts/setup_env.sh
-
-# ...and run the full suite in the same step:
-scripts/setup_env.sh --test
-
-# Verify an existing .venv only:
-scripts/setup_env.sh --check
-```
-
-This installs the exact-pinned set in `requirements-training.txt`. The canonical pins are:
-`torch 2.13.0`, `transformers 4.56.0`, `huggingface-hub 0.36.2`, `tokenizers 0.22.0`,
-`safetensors 0.8.0`, `numpy 2.2.6`, `datasets 5.0.1`, `scikit-learn 1.9.1`,
-`accelerate 1.15.0`, `pytest`. These match the versions the 8093 service runs in the ComfyUI
-environment for the shared ML stack, so training and serving stay aligned.
-
-**Why `huggingface-hub` is capped below 1.0.** `transformers 4.56.0` requires
-`huggingface-hub>=0.34.0,<1.0` and `tokenizers 0.22.0` requires
-`huggingface-hub>=0.16.4,<1.0`; the intersection is `>=0.34.0 and <1.0`. The `1.24.0` that
-was present in the broken test environment is a newer major that both packages refuse, which
-is exactly why the calibration end-to-end test failed at import time. To upgrade, bump
-`transformers`, `tokenizers`, and `huggingface-hub` together (they share this coupling),
-re-run `pip check`, and re-run the full suite.
-
-After setup, run the suite with:
-
-```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
-```
-
-The only expected skips are the optional-dependency skips in `tests/test_preprocessing.py`
-(`pypdf` and `Pillow` are not part of the training stack).
-
-The code uses a maximum sequence length of 512, a 192-unit decision head, up to ten output
-labels (eight Choice options at runtime to preserve the Laya bound). Training uses soft-target cross entropy plus Brier loss and an ordinal ranked-probability
-term for Score questions. The default schedule is one frozen-encoder head-warmup epoch followed
-by three full fine-tuning epochs, AdamW, a short linear warmup, gradient clipping, and optional
-`bf16`/`fp16` autocast. These settings are CLI arguments and are practical starting points for an
-RTX 4060 Ti; they are not a performance or calibration guarantee.
+The local DistilBERT backend loads that checkpoint for inference. The base package does not
+download model weights or run training; it only loads a manifest-verified checkpoint.
 
 Download public assets with the Hugging Face CLI (the commands write only to ignored paths):
 
@@ -246,22 +316,22 @@ Alternatively let `datasets` and Transformers populate their normal cache throug
 and training commands. A disconnected synthetic smoke path does not need either download:
 
 ```bash
-PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+python -m jev_laya_free.trainer prepare \
   --include-synthetic --synthetic-count 24 --output data/hybrid.jsonl \
   --validation-output data/validation.jsonl --no-local-traces
-PYTHONPATH=src python3 -m jev_laya_free.training smoke --tiny-random --device auto
-PYTHONPATH=src python3 -m jev_laya_free.training evaluate --output reports/synthetic.json
+python -m jev_laya_free.trainer smoke --tiny-random --device auto
+python -m jev_laya_free.trainer evaluate --output reports/synthetic.json
 ```
 
 For public preparation, use the dataset loader after installing the extras:
 
 ```bash
-PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+python -m jev_laya_free.trainer prepare \
   --public-dataset "$JEV_DATA_DIR/typed-decisions" --public-config all --public-split train \
   --include-synthetic --output data/hybrid.jsonl --validation-output data/validation.jsonl
 
 # Keep the public test cases out of training; the two outputs together contain the test split.
-PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+python -m jev_laya_free.trainer prepare \
   --public-dataset "$JEV_DATA_DIR/typed-decisions" --public-config all --public-split test \
   --no-local-traces --output data/public-test-a.jsonl \
   --validation-output data/public-test-b.jsonl
@@ -271,7 +341,7 @@ Preparation uses the default redacted Hermes path when it exists. Pass another l
 JSONL with `--local-traces`, or add `--no-local-traces` for a fully synthetic/public run:
 
 ```bash
-PYTHONPATH=src python3 -m jev_laya_free.training prepare \
+python -m jev_laya_free.trainer prepare \
   --public-dataset LocalLLaMA/typed-decisions --local-traces \
   /home/coreys/models/laya-sidecar/data/hermes-traces.jsonl \
   --output data/hybrid.jsonl --validation-output data/validation.jsonl
@@ -285,12 +355,12 @@ The split is group-stable so rows sharing a task group do not cross the train/va
 Train and evaluate a checkpoint after the data and base model are available locally:
 
 ```bash
-PYTHONPATH=src python3 -m jev_laya_free.training train \
+python -m jev_laya_free.trainer train \
   --data data/hybrid.jsonl --model "$JEV_MODEL_DIR/distilbert-base-uncased" \
   --validation-data data/validation.jsonl \
   --local-files-only --output-dir checkpoints/local-distilbert \
   --device cuda --precision bf16 --warmup-epochs 1 --epochs 3
-PYTHONPATH=src python3 -m jev_laya_free.training evaluate \
+python -m jev_laya_free.trainer evaluate \
   --predictions reports/predictions.jsonl --output reports/evaluation.json
 ```
 
@@ -346,14 +416,14 @@ pass; the deterministic guard precedence stays 13/13. The fitted temperature is 
 serving backend divides logits by it before softmax (default 1.0 when absent, so older
 checkpoints still load). The held-out before/after comparison, per-kind metrics, and the
 bootstrap stability are recorded in `reports/calibration.json` (run via
-`python -m jev_laya_free.training calibrate`).
+`python -m jev_laya_free.trainer calibrate`).
 
 ### Capability benchmark data
 
 The public typed-decisions dataset labels only the `progress` question, so the other 11
 capability families (model routing, confidence action, tool screening, completion, skill
 selection, compaction, citation, RAG filtering, semantic find, composite scoring, intent
-routing) had no held-out labels. `jev_laya_free.training.capability_benchmark` generates a
+routing) had no held-out labels. The trainer's capability-benchmark builder generates a
 small, fully deterministic labeled fixture for every capability family, with a deterministic
 three-way split (train / validation / held-out test) that has no state or question leakage
 between splits.
@@ -362,15 +432,16 @@ Regeneration is a pure function of the seed: the same seed always produces byte-
 JSONL, and no external service, network call, or secret is required.
 
 ```bash
+# In the trainer environment (not this package):
 # Smoke fixture (default): 12 capabilities x 7 scenarios x 5 variants = 420 examples.
-PYTHONPATH=src python3 -m jev_laya_free.training capability-benchmark \
+python -m jev_laya_free.trainer capability-benchmark \
   --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 \
   --output-dir data/capability-benchmark
 
 # Full fixture: 12 x 7 x 76 = 6384 examples total — 4476 train, 1272 validation, and
 # a 636-example held-out test split (53 per capability). The 1908 figure is the
 # combined validation+test support (159 per capability), not the test split size.
-PYTHONPATH=src python3 -m jev_laya_free.training capability-benchmark \
+python -m jev_laya_free.trainer capability-benchmark \
   --seed 20260920 --variants 76 --output-dir data/capability-benchmark-full
 ```
 
@@ -423,10 +494,11 @@ when comparing checkpoints. The fitted temperature is
 serving backend divides logits by it before softmax (default 1.0 when absent, so older
 checkpoints still load). The held-out before/after comparison, per-kind metrics, and the
 bootstrap stability are recorded in `reports/calibration-capability.json` (run via
-`python -m jev_laya_free.training calibrate`).
+`python -m jev_laya_free.trainer calibrate` in the trainer environment).
 
-`reports/final-capabilities.json` is **regenerated** (not hand-maintained) by
-`scripts/regenerate_final_capabilities.py`, which loads both checkpoints, evaluates each at
+`reports/final-capabilities.json` is **regenerated** (not hand-maintained) by the
+trainer's `regenerate_final_capabilities` script, which loads both checkpoints, evaluates
+each at
 its own persisted serving temperature on the held-out test split, computes per-capability
 accuracy/NLL/Brier/ECE/RPS, runs a 200-resample bootstrap for stability, and records the
 deterministic guard precedence. The full regeneration command (train → calibrate → report)
@@ -490,6 +562,7 @@ safety precedence. No private traces, real model weights, hosted calls, or runni
 | Artifact | What it records |
 | --- | --- |
 | [docs/BENCHMARK.md](docs/BENCHMARK.md) | How to run the offline smoke, rules-backend, and full held-out benchmarks, and how to interpret accuracy, ECE, NLL, Brier, support, latency, and guard metrics. |
+| [docs/MULTIMODAL_BENCHMARK.md](docs/MULTIMODAL_BENCHMARK.md) | The offline multimodal fixture set (JEV-MM-15): modalities, splits, leakage checks, the fail-closed acceptance gates, hard-negative confusions, and raw vs. calibrated metrics. A fixture set, not a model-quality claim. |
 | [docs/jev-hermes-integration.md](docs/jev-hermes-integration.md) | Architecture and integration: typed questions, DistilBERT advisory layer, deterministic guard, workflow adapter, loopback service. |
 | [reports/final-capabilities.json](reports/final-capabilities.json) | Per-capability held-out accuracy/NLL/Brier/ECE/RPS for the full 12-capability catalog, previous-checkpoint comparison, bootstrap stability, and deterministic guard precedence (regenerated, not hand-maintained). |
 | [reports/calibration-capability.json](reports/calibration-capability.json) | Held-out temperature fit (1.1875), before/after NLL, per-kind metrics, and bootstrap stability. |
@@ -524,9 +597,10 @@ views, environment precedence, required wire model, and hosted-model rejection.
 
 `system_one` / `systemOne` on both clients accept optional `artifacts`. Omitting
 it preserves the existing wire request. Each reference contains `id` (opaque
-ASCII letters, digits, underscore or hyphen), `kind` (`image`, `pdf`, `code`, or
-`text`), `mime`, a 64-character hexadecimal `sha256`, and `path` relative to a
-configured artifact root. Inline data and unknown fields are rejected.
+ASCII letters, digits, underscore or hyphen), `kind` (`image`, `pdf`, `code`,
+`video`, `audio`, or `text`), `mime`, a 64-character hexadecimal `sha256`, and
+`path` relative to a configured artifact root. Inline data and unknown fields are
+rejected.
 
 Set `JEV_ARTIFACT_ROOTS` to an OS-path-separator-delimited list of absolute local
 roots. The broker searches roots in order, rejects symlinks and traversal, reads
@@ -556,7 +630,7 @@ Offline multimodal dataset preparation and source exclusions are documented in
 causal episode splits, and keeps local traces out of the default public build.
 ### Offline multimodal acceptance
 
-`python -m jev_laya_free.training evaluate --predictions predictions.jsonl
+`python -m jev_laya_free.trainer evaluate --predictions predictions.jsonl
 --output acceptance.json --require-acceptance` emits the existing metrics plus an
 `acceptance` report and exits 1 if any required gate fails. Without
 `--require-acceptance`, the existing reporting exit behavior is preserved.
@@ -599,3 +673,73 @@ Set `max_latency_p95_ms` and `max_vram_mb` to require measured nearest-rank p95
 latency and peak sampled VRAM. Measurements must be provided by the caller;
 this harness does not benchmark hardware or import a model. Keep samples in
 consistent units and avoid duplicating per-request measurements across questions.
+
+## Shadow verification and preserved service boundaries
+
+The Qwen backend was verified in an **isolated shadow process** (JEV-MM-17,
+2026-09-21), not by replacing any live service. The exact commands (all
+loopback-only; `<scratch>` is a writable scratch directory):
+
+```bash
+cd /home/coreys/models/jev-laya-free
+
+# 1. Start the shadow (loopback 8094, distinct from the live 8093).
+PYTHONPATH=src JEV_QWEN_BASE_URL=http://127.0.0.1:8080 JEV_QWEN_TIMEOUT=60 \
+  JEV_ARTIFACT_ROOTS=<scratch>/artifacts \
+  .venv/bin/python -m jev_laya_free.server --backend qwen --host 127.0.0.1 --port 8094
+
+# 2. Confirm the bind is loopback-only (must be 127.0.0.1, not 0.0.0.0).
+ss -ltnp | grep -E ':8094\b'
+
+# 3. Run the live smoke (18/18) and the offline benchmark (no model/network).
+#    (multimodal-smoke lives in the trainer module — a separate environment.)
+python -m jev_laya_free.trainer multimodal-smoke --output-dir <scratch>/offline
+
+# 4. Confirm the live services are unchanged (same PIDs/listeners).
+ss -ltnp | grep -E ':8093\b|:8091\b'
+
+# 5. Clean shutdown; 8094 is released, no lingering worker.
+kill -TERM <shadow-pid>; sleep 2; ss -ltnp | grep -E ':8094\b'   # -> (empty)
+```
+
+**Preserved boundaries:** the live `127.0.0.1:8093` DistilBERT service and the
+`127.0.0.1:8091` Laya sidecar were **not replaced** — same PIDs and listeners
+before and after. The shadow ran on `127.0.0.1:8094` against the loopback Qwen
+endpoint `http://127.0.0.1:8080`; no external network or media URL was used
+(artifacts are local files sent as base64). Full evidence:
+`reports/jev-mm17-shadow-verification.md`. No deployment is claimed beyond the
+shadow in this release.
+
+## Limitations and troubleshooting
+
+- **Model serving was unavailable until verified.** The artifact broker, typed
+  protocol, workflow guard, profile assessor, and offline benchmark existed
+  before the Qwen backend; model serving for the multimodal modalities was not
+  live-verified until JEV-MM-17. Do not treat the deterministic lexical backend
+  as an intelligent safety classifier.
+- **Unsupported modalities fail closed.** Unknown modalities and `audio` (the
+  endpoint reports 0 audio slots, no transcription route) return a stable 503 /
+  `audio_not_verified` — never a fallback to text. `pdf` is declared supported
+  but its live probe verification is a future probe run; endpoint presence alone
+  never counts as verified.
+- **Strict score validation can fail closed live.** The endpoint is up and
+  multimodal, but a non-conforming model answer (e.g. a `score` that does not
+  match its own probability weighted-mean) fails closed (502/503, no fallback).
+  The fake/injected tests are the deterministic contract; the live probe is
+  reported as-is and does not substitute for them.
+- **No model download or deployment.** The base package is standard-library
+  only and does not download weights or run training; training lives in the
+  trainer module in a separate environment. Checkpoints are installed via a
+  checksummed manifest (`goblin-jev download-checkpoint`).
+- **Troubleshooting:**
+  - `503 backend unavailable` with no artifact roots set is expected (clean, no
+    traceback, no filesystem/secret leakage). Set `JEV_ARTIFACT_ROOTS` to
+    absolute roots.
+  - `422` on artifact selection: the path escaped a root, the SHA-256 did not
+    match, or a PDF page selection is out of document range.
+  - `413` / `422` on the request: the body exceeded the bound or the question
+    set exceeded the 33-question bound.
+  - A non-conforming model output raises a stable code (`malformed_json`,
+    `ValidationError`) — fail closed, no fallback decision.
+  - `local-distilbert` import errors: install PyTorch/Transformers in a separate
+    environment; the base package does not pull them.
