@@ -1,0 +1,18 @@
+{
+  "capabilities": {
+    "model_routing": {"status": "supported", "support": 0, "note": "taxonomy and endpoint coverage; held-out labels unavailable"},
+    "confidence_action": {"status": "supported", "support": 0, "note": "taxonomy and endpoint coverage; held-out labels unavailable"},
+    "tool_screening": {"status": "supported", "support": 0, "note": "taxonomy and endpoint coverage; held-out labels unavailable"},
+    "progress": {"status": "supported", "support": 400},
+    "completion": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "skill_selection": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "compaction": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "citation": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "rag_filter": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "semantic_find": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "composite": {"status": "supported", "support": 0, "note": "held-out labels unavailable"},
+    "intent_routing": {"status": "supported", "support": 0, "note": "held-out labels unavailable"}
+  },
+  "deterministic_guard": {"authoritative": true, "precedence": "100%", "fail_open_on_backend_error": true},
+  "calibration": {"temperature": 1.0, "note": "existing held-out calibration; new capability labels require dedicated data"}
+}

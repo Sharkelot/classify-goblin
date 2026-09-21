@@ -1,5 +1,10 @@
 # jev-laya-free
 
+The advisory catalog now covers the 12 awesome-jev capability families (routing, action
+confidence, screening, progress, completion, skills, compaction, citations, RAG, semantic
+find, composite scoring, and intent routing). See `docs/jev-hermes-integration.md` and
+`reports/final-capabilities.json`; deterministic workflow guards remain authoritative.
+
 An independent, MIT-licensed local implementation of the documented Jev typed-decision
 HTTP shape, with a Python client and optional Laya inference. This is **not TypeSafe's
 hosted model**, an official TypeSafe SDK, a reproduction of Jev's weights, or a promise

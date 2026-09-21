@@ -2,6 +2,7 @@
 import hashlib
 from . import schema
 from .client import Choice, Noul, ClientError
+from .taxonomy import questions as catalog_questions
 
 BOOLS = {'terminal', 'artifact_delta', 'board_delta', 'result_changed', 'same_action',
          'evidence_sufficient', 'source_grounded', 'test_needed'}
@@ -78,11 +79,7 @@ def decide(state, client=None):
             # Only routing metadata is sent. No source content or action/result text.
             summary = {k: state[k] for k in ('modality', 'extraction_quality', 'test_needed',
                                            'evidence_sufficient', 'source_grounded') if k in state}
-            result = client.system_one(state=summary, questions={
-                'next_hand': Choice(instructions='Suggest the next evidence step', options=[
-                    'inspect_code', 'run_test', 'extract_pdf_text', 'render_pdf_page',
-                    'inspect_image', 'synthesize', 'review', 'stop']),
-                'needs_review': Noul(instructions='Should a human review the evidence?')})
+            result = client.system_one(state=summary, questions=catalog_questions())
             output['advisory'].update(status='ok', answers=result['answers'])
         except (ClientError, schema.ValidationError):
             output['advisory']['status'] = 'unavailable'
