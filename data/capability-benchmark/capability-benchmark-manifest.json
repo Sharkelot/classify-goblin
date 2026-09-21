@@ -1,0 +1,299 @@
+{
+  "capabilities": {
+    "citation": {
+      "test": {
+        "labels": {
+          "true": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "false": 20,
+          "true": 5
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "true": 7
+        },
+        "support": 7
+      }
+    },
+    "compaction": {
+      "test": {
+        "labels": {
+          "drop": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "drop": 10,
+          "keep": 15
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "drop": 2,
+          "keep": 5
+        },
+        "support": 7
+      }
+    },
+    "completion": {
+      "test": {
+        "labels": {
+          "true": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "true": 25
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "false": 5,
+          "true": 2
+        },
+        "support": 7
+      }
+    },
+    "composite": {
+      "test": {
+        "labels": {
+          "medium": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "high": 10,
+          "medium": 15
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "low": 5,
+          "medium": 2
+        },
+        "support": 7
+      }
+    },
+    "confidence_action": {
+      "test": {
+        "labels": {
+          "medium": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "low": 15,
+          "medium": 10
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "high": 5,
+          "medium": 2
+        },
+        "support": 7
+      }
+    },
+    "intent_routing": {
+      "test": {
+        "labels": {
+          "specialist-LLM": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "human": 20,
+          "logic": 5
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "logic": 5,
+          "specialist-LLM": 2
+        },
+        "support": 7
+      }
+    },
+    "model_routing": {
+      "test": {
+        "labels": {
+          "cheap-LLM": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "deterministic-code": 10,
+          "frontier-LLM": 15
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "cheap-LLM": 2,
+          "deterministic-code": 5
+        },
+        "support": 7
+      }
+    },
+    "progress": {
+      "test": {
+        "labels": {
+          "continue": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "replan": 10,
+          "warn": 15
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "continue": 7
+        },
+        "support": 7
+      }
+    },
+    "rag_filter": {
+      "test": {
+        "labels": {
+          "flag": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "drop": 5,
+          "flag": 20
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "flag": 2,
+          "keep": 5
+        },
+        "support": 7
+      }
+    },
+    "semantic_find": {
+      "test": {
+        "labels": {
+          "true": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "false": 20,
+          "true": 5
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "true": 7
+        },
+        "support": 7
+      }
+    },
+    "skill_selection": {
+      "test": {
+        "labels": {
+          "possible": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "possible": 10,
+          "weak": 15
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "possible": 2,
+          "strong": 5
+        },
+        "support": 7
+      }
+    },
+    "tool_screening": {
+      "test": {
+        "labels": {
+          "suspicious": 3
+        },
+        "support": 3
+      },
+      "train": {
+        "labels": {
+          "harmful": 10,
+          "suspicious": 15
+        },
+        "support": 25
+      },
+      "validation": {
+        "labels": {
+          "safe": 5,
+          "suspicious": 2
+        },
+        "support": 7
+      }
+    }
+  },
+  "files": {
+    "sample": {
+      "path": "data/capability-benchmark/capability-benchmark-sample.jsonl",
+      "sha256": "f83a9672290148f1d9810fb0f46c337c9895bbf3dd90576d13377e596badcff2"
+    },
+    "test": {
+      "path": "data/capability-benchmark/capability-benchmark-test.jsonl",
+      "sha256": "786b11dc22521a2889a158eddce2f2cfd5f7808a407f5311bee75d08dc1c1578"
+    },
+    "train": {
+      "path": "data/capability-benchmark/capability-benchmark-train.jsonl",
+      "sha256": "949153b3436b8f30b50c1d6b2e42f5ac9c4e34830c6645d9b527b9538b834d04"
+    },
+    "validation": {
+      "path": "data/capability-benchmark/capability-benchmark-validation.jsonl",
+      "sha256": "829e7c3884de0cfe7c50d214ef704a6c0aeec3e7a316b3d5cdf6d62a3e8ff82f"
+    }
+  },
+  "fixture_class": "smoke",
+  "heldout_per_capability": 10,
+  "labeling_policy": "advisory probability targets; deterministic code owns thresholds and fail-open behavior",
+  "min_heldout_for_full": 100,
+  "provenance": "curated from the documented capability policy; no external Jev measurements; no secrets or external service dependency",
+  "regeneration": "python -m jev_laya_free.training capability-benchmark --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 --variants 5",
+  "schema_version": "1.0.0",
+  "seed": 20260920,
+  "splits": {
+    "test": 36,
+    "train": 300,
+    "validation": 84
+  },
+  "test_fraction": 0.1,
+  "total_examples": 420,
+  "validation_fraction": 0.2,
+  "variants_per_scenario": 5
+}

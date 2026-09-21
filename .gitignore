@@ -10,11 +10,10 @@ dist/
 *.pt
 models/
 traces/
-data/
-datasets/
 hf-cache/
 .cache/
 outputs/
+datasets/
 *.jsonl
 *.jsonl.gz
 *.ckpt
@@ -23,6 +22,25 @@ outputs/
 *.safetensors
 *.safetensors.index.json
 *.onnx
+
+# Ignore all of data/'s contents by default (model caches, external datasets,
+# top-level JSONL). The directory itself stays un-excluded so specific files
+# below can be re-included.
+data/*
+
+# Capability benchmark: keep the large split JSONL out of Git, but check in the
+# small manifests + samples (deterministic regeneration is documented in each).
+# Re-include the two capability-benchmark directories first (a file cannot be
+# re-included if its parent directory is excluded), then ignore their contents
+# again except the manifest + sample.
+!data/capability-benchmark/
+data/capability-benchmark/*
+!data/capability-benchmark/capability-benchmark-manifest.json
+!data/capability-benchmark/capability-benchmark-sample.jsonl
+!data/capability-benchmark-full/
+data/capability-benchmark-full/*
+!data/capability-benchmark-full/capability-benchmark-manifest.json
+!data/capability-benchmark-full/capability-benchmark-sample.jsonl
 
 # Ignore the contents of reports/ and checkpoints/ (not the dirs themselves)
 # so the calibration config + held-out reports can be re-included below.

@@ -1,0 +1,309 @@
+{
+  "capabilities": {
+    "citation": {
+      "test": {
+        "labels": {
+          "false": 7,
+          "true": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "false": 297,
+          "true": 76
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "true": 106
+        },
+        "support": 106
+      }
+    },
+    "compaction": {
+      "test": {
+        "labels": {
+          "drop": 53
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "drop": 145,
+          "keep": 228
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "drop": 30,
+          "keep": 76
+        },
+        "support": 106
+      }
+    },
+    "completion": {
+      "test": {
+        "labels": {
+          "true": 53
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "true": 373
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "false": 76,
+          "true": 30
+        },
+        "support": 106
+      }
+    },
+    "composite": {
+      "test": {
+        "labels": {
+          "high": 7,
+          "medium": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "high": 145,
+          "medium": 228
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "low": 76,
+          "medium": 30
+        },
+        "support": 106
+      }
+    },
+    "confidence_action": {
+      "test": {
+        "labels": {
+          "low": 7,
+          "medium": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "low": 221,
+          "medium": 152
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "high": 76,
+          "medium": 30
+        },
+        "support": 106
+      }
+    },
+    "intent_routing": {
+      "test": {
+        "labels": {
+          "human": 7,
+          "specialist-LLM": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "human": 297,
+          "logic": 76
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "logic": 76,
+          "specialist-LLM": 30
+        },
+        "support": 106
+      }
+    },
+    "model_routing": {
+      "test": {
+        "labels": {
+          "cheap-LLM": 46,
+          "frontier-LLM": 7
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "deterministic-code": 152,
+          "frontier-LLM": 221
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "cheap-LLM": 30,
+          "deterministic-code": 76
+        },
+        "support": 106
+      }
+    },
+    "progress": {
+      "test": {
+        "labels": {
+          "continue": 46,
+          "warn": 7
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "replan": 152,
+          "warn": 221
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "continue": 106
+        },
+        "support": 106
+      }
+    },
+    "rag_filter": {
+      "test": {
+        "labels": {
+          "drop": 7,
+          "flag": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "drop": 69,
+          "flag": 304
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "flag": 30,
+          "keep": 76
+        },
+        "support": 106
+      }
+    },
+    "semantic_find": {
+      "test": {
+        "labels": {
+          "false": 7,
+          "true": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "false": 297,
+          "true": 76
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "true": 106
+        },
+        "support": 106
+      }
+    },
+    "skill_selection": {
+      "test": {
+        "labels": {
+          "possible": 46,
+          "weak": 7
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "possible": 152,
+          "weak": 221
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "possible": 30,
+          "strong": 76
+        },
+        "support": 106
+      }
+    },
+    "tool_screening": {
+      "test": {
+        "labels": {
+          "harmful": 7,
+          "suspicious": 46
+        },
+        "support": 53
+      },
+      "train": {
+        "labels": {
+          "harmful": 145,
+          "suspicious": 228
+        },
+        "support": 373
+      },
+      "validation": {
+        "labels": {
+          "safe": 76,
+          "suspicious": 30
+        },
+        "support": 106
+      }
+    }
+  },
+  "files": {
+    "sample": {
+      "path": "data/capability-benchmark-full/capability-benchmark-sample.jsonl",
+      "sha256": "6652c626a5d84814d9e235ced46766e9e9ef0067399d7e8cc9568917e2eb2ed2"
+    },
+    "test": {
+      "path": "data/capability-benchmark-full/capability-benchmark-test.jsonl",
+      "sha256": "60a48fedaebf2c995b0a6c7383ff4fcb1065f358121cdebddda7b905b783a146"
+    },
+    "train": {
+      "path": "data/capability-benchmark-full/capability-benchmark-train.jsonl",
+      "sha256": "f97fb70fe36e56a92672bd20e29772deff8bc92b0663c2e79eb2faf858c0f5d1"
+    },
+    "validation": {
+      "path": "data/capability-benchmark-full/capability-benchmark-validation.jsonl",
+      "sha256": "fe576da311483c036cfd373ac94dee60a50d97078f9216ccabeddbd306b3c737"
+    }
+  },
+  "fixture_class": "full",
+  "heldout_per_capability": 159,
+  "labeling_policy": "advisory probability targets; deterministic code owns thresholds and fail-open behavior",
+  "min_heldout_for_full": 100,
+  "provenance": "curated from the documented capability policy; no external Jev measurements; no secrets or external service dependency",
+  "regeneration": "python -m jev_laya_free.training capability-benchmark --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 --variants 76",
+  "schema_version": "1.0.0",
+  "seed": 20260920,
+  "splits": {
+    "test": 636,
+    "train": 4476,
+    "validation": 1272
+  },
+  "test_fraction": 0.1,
+  "total_examples": 6384,
+  "validation_fraction": 0.2,
+  "variants_per_scenario": 76
+}

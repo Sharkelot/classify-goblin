@@ -348,6 +348,44 @@ checkpoints still load). The held-out before/after comparison, per-kind metrics,
 bootstrap stability are recorded in `reports/calibration.json` (run via
 `python -m jev_laya_free.training calibrate`).
 
+### Capability benchmark data
+
+The public typed-decisions dataset labels only the `progress` question, so the other 11
+capability families (model routing, confidence action, tool screening, completion, skill
+selection, compaction, citation, RAG filtering, semantic find, composite scoring, intent
+routing) had no held-out labels. `jev_laya_free.training.capability_benchmark` generates a
+small, fully deterministic labeled fixture for every capability family, with a deterministic
+three-way split (train / validation / held-out test) that has no state or question leakage
+between splits.
+
+Regeneration is a pure function of the seed: the same seed always produces byte-identical
+JSONL, and no external service, network call, or secret is required.
+
+```bash
+# Smoke fixture (default): 12 capabilities x 7 scenarios x 5 variants = 420 examples.
+PYTHONPATH=src python3 -m jev_laya_free.training capability-benchmark \
+  --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 \
+  --output-dir data/capability-benchmark
+
+# Full fixture: 12 x 7 x 76 = 6384 examples, 159 combined validation+test support per
+# capability (>= the 100-example quality gate for trustworthy per-capability
+# accuracy/calibration claims).
+PYTHONPATH=src python3 -m jev_laya_free.training capability-benchmark \
+  --seed 20260920 --variants 76 --output-dir data/capability-benchmark-full
+```
+
+Every gold label is **advisory**: the model output is a probability distribution over the
+question's criteria, and deterministic code owns the thresholds and fail-open behavior (see
+`taxonomy.CATALOG`). A gold label never turns a deterministic gate on or off by itself.
+Labels are curated from the documented capability policy (the scenario matrix in
+`capability_benchmark.GOLD`), not fabricated external Jev measurements; every example carries
+`metadata.label_rationale` and `metadata.provenance` so a label can be audited without leaving
+the repository.
+
+The large split JSONL files are kept out of Git (regenerable from the seed); the checked-in
+`capability-benchmark-manifest.json` and `capability-benchmark-sample.jsonl` for each fixture
+record the coverage, file checksums, fixture class, and the regeneration command.
+
 ## Bounds and failures
 
 - Requests: 64 KiB, depth 16, 1–32 questions, question/option names up to 128 characters,
