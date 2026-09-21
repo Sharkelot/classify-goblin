@@ -16,8 +16,54 @@ from .data import (
     write_jsonl,
 )
 from .engine import one_batch_smoke, tiny_random_smoke, train
+from .calibrate import calibrate
 from .acceptance import AcceptanceConfig, evaluate_acceptance
 from .metrics import compare_reports, evaluate_predictions, evaluate_workflow_precedence
+from ..distilbert_model import calibration_temperature
+
+
+def _resolve_calibration(value: str | None) -> float:
+    """Resolve a --calibration value into a temperature.
+
+    Accepts either a numeric temperature (e.g. "1.25") or a checkpoint path, in
+    which case the stored calibration temperature is read back (default 1.0 when
+    the checkpoint was never calibrated, so old checkpoints still evaluate).
+    """
+    if value is None:
+        return 1.0
+    try:
+        return float(value)
+    except ValueError:
+        return calibration_temperature(value)
+
+
+def _rescale(records: list[dict], temperature: float) -> list[dict]:
+    """Re-scale stored probabilities through a temperature.
+
+    predictions.jsonl holds normalized probabilities, not raw logits; recovering
+    the log-probabilities, dividing by the temperature, and re-normalising is
+    algebraically identical to scaling the raw logits before softmax, so the
+    same fitted scalar applies end-to-end.
+    """
+    import math
+    rescaled = []
+    for record in records:
+        probs = record.get("probabilities")
+        if not probs:
+            rescaled.append(record)
+            continue
+        log_probs = [math.log(max(1e-12, p)) for p in probs]
+        scaled = [lp / temperature for lp in log_probs]
+        pivot = max(scaled)
+        exps = [math.exp(v - pivot) for v in scaled]
+        total = sum(exps)
+        probabilities = [e / total for e in exps]
+        predicted = max(range(len(probabilities)), key=probabilities.__getitem__)
+        new_record = dict(record)
+        new_record["probabilities"] = probabilities
+        new_record["predicted_index"] = predicted
+        rescaled.append(new_record)
+    return rescaled
 
 
 def _common_model_args(parser):
@@ -69,6 +115,19 @@ def build_parser():
     evaluate.add_argument("--output", default=None)
     evaluate.add_argument("--acceptance-config", help="JSON object of AcceptanceConfig thresholds")
     evaluate.add_argument("--require-acceptance", action="store_true", help="exit 1 when a required gate fails")
+    evaluate.add_argument("--calibration", default=None,
+                        help="temperature (e.g. 1.25) or checkpoint path; re-scales prediction probabilities through it and reports a with/without side-by-side")
+
+    cal = commands.add_parser("calibrate", help="fit a held-out temperature on a trained checkpoint")
+    cal.add_argument("--checkpoint", default="checkpoints/local-distilbert")
+    cal.add_argument("--data", nargs="+", required=True, help="held-out JSONL path(s), e.g. data/public-test-a.jsonl data/public-test-b.jsonl")
+    cal.add_argument("--device", default=None, help="cpu, cuda, or a specific CUDA device")
+    cal.add_argument("--batch-size", type=int, default=32)
+    cal.add_argument("--max-length", type=int, default=512)
+    cal.add_argument("--bootstrap-iterations", type=int, default=100)
+    cal.add_argument("--seed", type=int, default=7)
+    cal.add_argument("--output", default=None, help="write the calibration report to this JSON path")
+    cal.add_argument("--no-apply", action="store_true", help="do not persist the temperature into the checkpoint config")
 
     return parser
 
@@ -122,18 +181,46 @@ def main(argv=None) -> int:
             records = []
             if args.predictions:
                 records = [json.loads(line) for line in Path(args.predictions).read_text(encoding="utf-8").splitlines() if line.strip()]
-            prediction_report = evaluate_predictions([r for r in records if "probabilities" in r and "label_index" in r])
+            eval_records = [r for r in records if "probabilities" in r and "label_index" in r]
+            prediction_report = evaluate_predictions(eval_records)
             config = AcceptanceConfig(**json.loads(Path(args.acceptance_config).read_text())) if args.acceptance_config else AcceptanceConfig()
             report = {"predictions": prediction_report, "deterministic_precedence": evaluate_workflow_precedence()}
             report["acceptance"] = evaluate_acceptance(records, config)
             if args.baseline:
                 report["comparison"] = compare_reports(prediction_report, json.loads(Path(args.baseline).read_text(encoding="utf-8")))
+            if args.calibration is not None:
+                temperature = _resolve_calibration(args.calibration)
+                calibrated = _rescale(eval_records, temperature)
+                calibrated_report = evaluate_predictions(calibrated)
+                report["calibration"] = {
+                    "temperature": temperature,
+                    "without_temperature": prediction_report,
+                    "with_temperature": calibrated_report,
+                    "delta": compare_reports(calibrated_report, prediction_report),
+                }
             text = json.dumps(report, indent=2, sort_keys=True)
             if args.output:
                 Path(args.output).parent.mkdir(parents=True, exist_ok=True)
                 Path(args.output).write_text(text + "\n", encoding="utf-8")
             print(text)
             return 1 if args.require_acceptance and not report["acceptance"]["passed"] else 0
+        if args.command == "calibrate":
+            report = calibrate(
+                checkpoint=args.checkpoint,
+                data=args.data,
+                device=args.device,
+                batch_size=args.batch_size,
+                max_length=args.max_length,
+                bootstrap_iterations=args.bootstrap_iterations,
+                seed=args.seed,
+                apply=not args.no_apply,
+            )
+            text = json.dumps(report, indent=2, sort_keys=True)
+            if args.output:
+                Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+                Path(args.output).write_text(text + "\n", encoding="utf-8")
+            print(text)
+            return 0
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

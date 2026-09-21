@@ -1,0 +1,257 @@
+{
+  "after": {
+    "by_kind": {
+      "choice": {
+        "accuracy": 0.48,
+        "brier": 0.6506310231603037,
+        "count": 600,
+        "ece": 0.04842435117919687,
+        "nll": 1.183619512617984,
+        "rps": null
+      },
+      "noul": {
+        "accuracy": 0.67,
+        "brier": 0.42225358083600184,
+        "count": 600,
+        "ece": 0.055766205353958764,
+        "nll": 0.6127085189823102,
+        "rps": null
+      },
+      "score": {
+        "accuracy": 0.42625,
+        "brier": 0.6605596842760931,
+        "count": 800,
+        "ece": 0.03981559815698858,
+        "nll": 1.1847872031242968,
+        "rps": 0.06385201478435992
+      }
+    },
+    "overall": {
+      "accuracy": 0.5155,
+      "brier": 0.5860892549093285,
+      "count": 2000,
+      "ece": 0.03919340472949418,
+      "nll": 1.012813290729808,
+      "rps": 0.06385201478435992
+    }
+  },
+  "applied": true,
+  "before": {
+    "by_kind": {
+      "choice": {
+        "accuracy": 0.48,
+        "brier": 0.6506310231603037,
+        "count": 600,
+        "ece": 0.04842435117919687,
+        "nll": 1.183619512617984,
+        "rps": null
+      },
+      "noul": {
+        "accuracy": 0.67,
+        "brier": 0.42225358083600184,
+        "count": 600,
+        "ece": 0.055766205353958764,
+        "nll": 0.6127085189823102,
+        "rps": null
+      },
+      "score": {
+        "accuracy": 0.42625,
+        "brier": 0.6605596842760931,
+        "count": 800,
+        "ece": 0.03981559815698858,
+        "nll": 1.1847872031242968,
+        "rps": 0.06385201478435992
+      }
+    },
+    "overall": {
+      "accuracy": 0.5155,
+      "brier": 0.5860892549093285,
+      "count": 2000,
+      "ece": 0.03919340472949418,
+      "nll": 1.012813290729808,
+      "rps": 0.06385201478435992
+    }
+  },
+  "bootstrap": {
+    "iterations": 100,
+    "max": 1.125,
+    "mean": 0.96875,
+    "min": 0.875,
+    "p10": 0.9375,
+    "p50": 0.9375,
+    "p90": 1.0,
+    "std": 0.046351240544347895
+  },
+  "calibration": {
+    "nll_after": 1.012813290729808,
+    "nll_before": 1.012813290729808,
+    "temperature": 1.0
+  },
+  "checkpoint": "checkpoints/local-distilbert",
+  "counts": {
+    "examples": 400,
+    "questions": 2000
+  },
+  "deterministic_precedence": {
+    "accuracy": 1.0,
+    "cases": [
+      {
+        "actual": "terminal",
+        "expected": "terminal",
+        "state": {
+          "same_action_streak": 9,
+          "terminal": true
+        }
+      },
+      {
+        "actual": "stop",
+        "expected": "stop",
+        "state": {
+          "same_action_streak": 3
+        }
+      },
+      {
+        "actual": "stop",
+        "expected": "stop",
+        "state": {
+          "context_compactions": 2
+        }
+      },
+      {
+        "actual": "stop",
+        "expected": "stop",
+        "state": {
+          "same_tool_failures": 3
+        }
+      },
+      {
+        "actual": "review",
+        "expected": "review",
+        "state": {
+          "same_action_streak": 2
+        }
+      },
+      {
+        "actual": "allow",
+        "expected": "allow",
+        "state": {
+          "artifact_delta": true,
+          "same_action_streak": 3
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "same_action_streak": 9,
+          "terminal": true
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "same_action_streak": 3
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "context_compactions": 2
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "same_tool_failures": 3
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "same_action_streak": 2
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "artifact_delta": true,
+          "same_action_streak": 3
+        }
+      },
+      {
+        "actual": true,
+        "expected": true,
+        "state": {
+          "modality": "code"
+        }
+      }
+    ],
+    "evidence_routing": {
+      "accuracy": 1.0,
+      "cases": [
+        {
+          "actual": "inspect_code",
+          "expected": "inspect_code",
+          "state": {
+            "modality": "code"
+          }
+        },
+        {
+          "actual": "run_test",
+          "expected": "run_test",
+          "state": {
+            "modality": "code",
+            "test_needed": true
+          }
+        },
+        {
+          "actual": "extract_pdf_text",
+          "expected": "extract_pdf_text",
+          "state": {
+            "modality": "pdf"
+          }
+        },
+        {
+          "actual": "render_pdf_page",
+          "expected": "render_pdf_page",
+          "state": {
+            "extraction_quality": "scanned",
+            "modality": "pdf"
+          }
+        },
+        {
+          "actual": "inspect_image",
+          "expected": "inspect_image",
+          "state": {
+            "modality": "image"
+          }
+        },
+        {
+          "actual": "synthesize",
+          "expected": "synthesize",
+          "state": {
+            "evidence_sufficient": true,
+            "location": "page 1",
+            "source_digest": "sha256:fixture",
+            "source_grounded": true
+          }
+        }
+      ],
+      "passed": 6,
+      "total": 6
+    },
+    "passed": 13,
+    "total": 13
+  },
+  "format": "jev-laya-calibration-v1",
+  "forward_seconds": 2.916775804013014,
+  "split": [
+    "data/public-test-a.jsonl",
+    "data/public-test-b.jsonl"
+  ]
+}

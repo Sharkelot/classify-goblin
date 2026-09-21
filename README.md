@@ -279,7 +279,7 @@ A checkpoint was trained on the RTX 4060 Ti (bf16, 1 warmup + 3 epochs) from the
 typed-decisions set (1035 train / 285 validation, local + public + synthetic) with the public
 `test` split held out, and saved to `checkpoints/local-distilbert` (float16, 192-dim head).
 Held-out evaluation (400 test examples, 2000 prediction records) reports validation accuracy 0.56,
-ECE 0.0392, and deterministic-rule precedence 6/6. The advisory-only gates that have support
+ECE 0.0392, and deterministic-rule precedence 13/13. The advisory-only gates that have support
 pass (calibration, deterministic guard precedence); the modality/risk gates report `support=0`
 because the public test set carries no `loop_state`/`next_hand`/`high_risk_code`/`modality`
 fields, which is a data-coverage gap, not a model-quality failure. No gate authorizes execution.
@@ -290,6 +290,18 @@ The trained backend is deployed as the systemd user unit `jev-distilbert.service
 (loopback-only, `Restart=on-failure`) serving `127.0.0.1:8093` with
 `JEV_DISTILBERT_MODEL_PATH=checkpoints/local-distilbert` and `JEV_DISTILBERT_DEVICE=cuda`.
 The old Laya sidecar on `127.0.0.1:8091` (`laya-loop-gate.service`) is untouched.
+
+Held-out temperature calibration (2026-09-20): the temperature was re-fitted on the
+public test split (400 examples, 2000 records, never seen in training) via
+`fit_temperature()` and the fit is stable (bootstrap mean 0.97, std 0.046, 100 resamples).
+The fitted temperature is 1.0 (held-out NLL 1.0128 both before and after), so the model is
+already well-calibrated and the advisory probabilities are unchanged by the calibration
+pass; the deterministic guard precedence stays 13/13. The fitted temperature is stored in
+`checkpoints/local-distilbert/jev_laya_config.json` (`calibration.temperature`) and the
+serving backend divides logits by it before softmax (default 1.0 when absent, so older
+checkpoints still load). The held-out before/after comparison, per-kind metrics, and the
+bootstrap stability are recorded in `reports/calibration.json` (run via
+`python -m jev_laya_free.training calibrate`).
 
 ## Bounds and failures
 

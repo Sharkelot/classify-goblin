@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from . import schema
-from .distilbert_model import DEFAULT_MAX_LENGTH, load_checkpoint, render_question_prompt
+from .distilbert_model import DEFAULT_MAX_LENGTH, calibration_temperature, load_checkpoint, render_question_prompt
 
 
 def _confidence(probabilities):
@@ -35,6 +35,7 @@ class LocalDistilBertRuntime:
         self.max_length = int(self.config.get("max_length", DEFAULT_MAX_LENGTH))
         self.max_choice_options = int(self.config.get("max_choice_options", 8))
         self.max_score_options = int(self.config.get("max_score_options", 10))
+        self.temperature = calibration_temperature(path)
 
     def predict(self, state, questions):
         torch = self._torch()
@@ -59,6 +60,7 @@ class LocalDistilBertRuntime:
         encoded = {key: value.to(self.device) for key, value in encoded.items()}
         with torch.inference_mode():
             logits = self.model(**encoded)
+            logits = logits / self.temperature
             probabilities = torch.softmax(logits, dim=-1).detach().cpu().tolist()
         output = {}
         for index, (name, question) in enumerate(questions.items()):

@@ -14,8 +14,6 @@ data/
 datasets/
 hf-cache/
 .cache/
-reports/
-checkpoints/
 outputs/
 *.jsonl
 *.jsonl.gz
@@ -25,3 +23,18 @@ outputs/
 *.safetensors
 *.safetensors.index.json
 *.onnx
+
+# Ignore the contents of reports/ and checkpoints/ (not the dirs themselves)
+# so the calibration config + held-out reports can be re-included below.
+reports/*
+checkpoints/*
+
+# Re-include the specific report files we commit.
+!reports/calibration.json
+!reports/evaluation_calibrated.json
+!reports/evaluation.json
+
+# Re-include the calibration config (requires un-ignoring the parent dir first).
+!checkpoints/local-distilbert/
+checkpoints/local-distilbert/*
+!checkpoints/local-distilbert/jev_laya_config.json

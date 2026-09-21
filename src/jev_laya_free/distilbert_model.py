@@ -8,6 +8,7 @@ The checkpoint format is local and explicit; it is not a hosted Jev/Laya checkpo
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -182,6 +183,48 @@ def save_checkpoint(model, tokenizer, path: str | Path, *, base_model: str,
     )
 
 
+def calibration_temperature(path: str | Path) -> float:
+    """Read the stored calibration temperature, defaulting to 1.0 when absent.
+
+    A missing block means the checkpoint was trained before calibration, so old
+    checkpoints keep serving uncalibrated probabilities.
+    """
+
+    block = checkpoint_config(path).get("calibration") or {}
+    value = block.get("temperature", 1.0)
+    value = float(value)
+    if not math.isfinite(value) or value <= 0:
+        return 1.0
+    return value
+
+
+def save_calibration(path: str | Path, calibration: Mapping[str, Any]) -> dict[str, Any]:
+    """Merge a fitted calibration block into an existing checkpoint config.
+
+    The temperature is advisory: the deterministic workflow guard remains
+    authoritative, so a missing block simply means temperature 1.0 at inference.
+    """
+
+    path = Path(path)
+    config = checkpoint_config(path)
+    temperature = float(calibration["temperature"])
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("calibration temperature must be a positive finite number")
+    split = calibration.get("fitted_on") or calibration.get("split")
+    if isinstance(split, (list, tuple)):
+        split = "+".join(str(item) for item in split)
+    config["calibration"] = {
+        "temperature": temperature,
+        "nll_before": float(calibration.get("nll_before", 0.0)),
+        "nll_after": float(calibration.get("nll_after", 0.0)),
+        "fitted_on": str(split or "validation"),
+    }
+    (path / "jev_laya_config.json").write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return config
+
+
 def _load_torch_state(path: Path):
     torch, _ = _torch_import()
     try:
@@ -229,4 +272,5 @@ __all__ = [
     "CHECKPOINT_VERSION", "DEFAULT_BASE_MODEL", "DEFAULT_MAX_LENGTH", "DEFAULT_HEAD_DIM",
     "DEFAULT_MAX_OPTIONS", "compact_text", "render_question_prompt", "build_model",
     "load_base_components", "load_checkpoint", "save_checkpoint", "checkpoint_config",
+    "save_calibration", "calibration_temperature",
 ]
