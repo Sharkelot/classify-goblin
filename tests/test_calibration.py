@@ -101,6 +101,15 @@ class CalibrateCommandTests(unittest.TestCase):
 
 
 class RescaleFlagTests(unittest.TestCase):
+    def _write_checkpoint(self, directory):
+        config = {
+            "format": "jev-laya-distilbert-v1",
+            "model": "distilbert-base",
+            "head_dim": 64,
+            "max_options": 16,
+        }
+        (Path(directory) / "jev_laya_config.json").write_text(json.dumps(config), encoding="utf-8")
+
     def test_rescale_identity_at_one(self):
         record = {"probabilities": [0.1, 0.9], "label_index": 1}
         out = _rescale([record], 1.0)[0]
@@ -134,6 +143,7 @@ class RescaleFlagTests(unittest.TestCase):
         self.assertEqual(_resolve_calibration(None), 1.0)
         self.assertEqual(_resolve_calibration("1.25"), 1.25)
         with tempfile.TemporaryDirectory() as directory:
+            self._write_checkpoint(directory)
             save_calibration(directory, {"temperature": 0.75})
             self.assertEqual(_resolve_calibration(directory), 0.75)
             # A valid config with no calibration block falls back to 1.0.
