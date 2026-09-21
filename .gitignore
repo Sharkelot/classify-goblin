@@ -19,6 +19,10 @@ datasets/
 *.ckpt
 *.pth
 *.bin
+
+# Small deterministic benchmark fixture used by the CLI smoke test.
+!fixtures/
+!fixtures/benchmark-smoke.jsonl
 *.safetensors
 *.safetensors.index.json
 *.onnx
@@ -51,8 +55,13 @@ checkpoints/*
 !reports/calibration.json
 !reports/evaluation_calibrated.json
 !reports/evaluation.json
+!reports/final-capabilities.json
+!reports/calibration-capability.json
 
 # Re-include the calibration config (requires un-ignoring the parent dir first).
 !checkpoints/local-distilbert/
 checkpoints/local-distilbert/*
 !checkpoints/local-distilbert/jev_laya_config.json
+!checkpoints/capability-distilbert/
+checkpoints/capability-distilbert/*
+!checkpoints/capability-distilbert/jev_laya_config.json

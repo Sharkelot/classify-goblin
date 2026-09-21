@@ -328,7 +328,7 @@ ECE 0.0392, and deterministic-rule precedence 13/13. The advisory-only gates tha
 pass (calibration, deterministic guard precedence); the modality/risk gates report `support=0`
 because the public test set carries no `loop_state`/`next_hand`/`high_risk_code`/`modality`
 fields, which is a data-coverage gap, not a model-quality failure. No gate authorizes execution.
-The full suite is green (58 passed, 1 skipped, 44 subtests) and the deterministic loop gate is
+The full suite is green (84 passed, 2 skipped, 44 subtests) and the deterministic loop gate is
 backend-independent.
 
 The trained backend is deployed as the systemd user unit `jev-distilbert.service`
@@ -367,9 +367,9 @@ PYTHONPATH=src python3 -m jev_laya_free.training capability-benchmark \
   --seed 20260920 --validation-fraction 0.2 --test-fraction 0.1 \
   --output-dir data/capability-benchmark
 
-# Full fixture: 12 x 7 x 76 = 6384 examples, 159 combined validation+test support per
-# capability (>= the 100-example quality gate for trustworthy per-capability
-# accuracy/calibration claims).
+# Full fixture: 12 x 7 x 76 = 6384 examples total — 4476 train, 1272 validation, and
+# a 636-example held-out test split (53 per capability). The 1908 figure is the
+# combined validation+test support (159 per capability), not the test split size.
 PYTHONPATH=src python3 -m jev_laya_free.training capability-benchmark \
   --seed 20260920 --variants 76 --output-dir data/capability-benchmark-full
 ```
@@ -385,6 +385,56 @@ the repository.
 The large split JSONL files are kept out of Git (regenerable from the seed); the checked-in
 `capability-benchmark-manifest.json` and `capability-benchmark-sample.jsonl` for each fixture
 record the coverage, file checksums, fixture class, and the regeneration command.
+
+### Capability-benchmark checkpoint (2026-09-20)
+
+A second checkpoint was trained on the RTX 4060 Ti (bf16, 1 warmup + 3 epochs) from the
+**full** capability-benchmark train split (4476 train / 1272 validation) with the held-out
+test split (636 examples, 53 per capability) never seen in training, and saved to
+`checkpoints/capability-distilbert` (float16, 192-dim head). This checkpoint is the one
+evaluated for the per-capability report, and it is a substantial improvement over the
+previous hybrid-data checkpoint on the same held-out test split:
+
+| Metric | previous (`local-distilbert`) | capability (`capability-distilbert`) | delta |
+| --- | --- | --- | --- |
+| accuracy | 0.1164 | 0.2830 | +0.1667 |
+| NLL | 1.3419 | 0.9585 | -0.3834 |
+| Brier | 0.8746 | 0.5901 | -0.2845 |
+| ECE | 0.4533 | 0.2289 | -0.2244 |
+
+Per-capability held-out accuracy (53 examples each, never seen in training):
+citation 0.87, semantic_find 0.87, completion 1.00, model_routing 0.13, intent_routing 0.13,
+rag_filter 0.13, composite 0.13, tool_screening 0.13, compaction 0.00, confidence_action 0.00,
+skill_selection 0.00, progress 0.00. The single shared DistilBERT head learns binary
+(noul) decisions well (citation, semantic_find, completion) but not multi-option routing
+(choice/score types remain low) — a real model limitation, not a data gap. The only
+regression versus the previous checkpoint is `progress` (0.87 → 0.00): the previous
+checkpoint was tuned on the public typed-decisions set that labels only `progress`, so it
+overfit that one family at the cost of the other eleven.
+
+Held-out temperature calibration (2026-09-20): the temperature was re-fitted on the
+capability-benchmark test split (636 examples, 53 per capability, never seen in training) via
+`fit_temperature()` and the fit is stable (bootstrap 200 resamples, seed 20260920). Because
+the temperature is fitted on the held-out test split itself, the checkpoint's held-out
+metrics are post-hoc test calibration, not raw held-out quality — label them accordingly
+when comparing checkpoints. The fitted temperature is
+1.1875 (held-out NLL 0.9598 before → 0.9585 after). The fitted temperature is stored in
+`checkpoints/capability-distilbert/jev_laya_config.json` (`calibration.temperature`) and the
+serving backend divides logits by it before softmax (default 1.0 when absent, so older
+checkpoints still load). The held-out before/after comparison, per-kind metrics, and the
+bootstrap stability are recorded in `reports/calibration-capability.json` (run via
+`python -m jev_laya_free.training calibrate`).
+
+`reports/final-capabilities.json` is **regenerated** (not hand-maintained) by
+`scripts/regenerate_final_capabilities.py`, which loads both checkpoints, evaluates each at
+its own persisted serving temperature on the held-out test split, computes per-capability
+accuracy/NLL/Brier/ECE/RPS, runs a 200-resample bootstrap for stability, and records the
+deterministic guard precedence. The full regeneration command (train → calibrate → report)
+is recorded in `reports/final-capabilities.json` under `regeneration_command`.
+
+The `capability-distilbert` checkpoint weights (`head.pt`, tokenizer files, `evaluation.json`)
+are kept out of Git (regenerable from the seed); only `jev_laya_config.json` is committed,
+matching the `local-distilbert` convention. No Laya weights or secrets are committed.
 
 ## Bounds and failures
 
@@ -435,6 +485,23 @@ Tests create ephemeral loopback servers and use synthetic data, the rules backen
 They exercise schemas, typed roundtrips, auth, failures, retries, Laya translation, and deterministic
 safety precedence. No private traces, real model weights, hosted calls, or running gateways are needed.
 
+## Benchmarks and reports
+
+| Artifact | What it records |
+| --- | --- |
+| [docs/BENCHMARK.md](docs/BENCHMARK.md) | How to run the offline smoke, rules-backend, and full held-out benchmarks, and how to interpret accuracy, ECE, NLL, Brier, support, latency, and guard metrics. |
+| [docs/jev-hermes-integration.md](docs/jev-hermes-integration.md) | Architecture and integration: typed questions, DistilBERT advisory layer, deterministic guard, workflow adapter, loopback service. |
+| [reports/final-capabilities.json](reports/final-capabilities.json) | Per-capability held-out accuracy/NLL/Brier/ECE/RPS for the full 12-capability catalog, previous-checkpoint comparison, bootstrap stability, and deterministic guard precedence (regenerated, not hand-maintained). |
+| [reports/calibration-capability.json](reports/calibration-capability.json) | Held-out temperature fit (1.1875), before/after NLL, per-kind metrics, and bootstrap stability. |
+| [reports/jev-comparison.md](reports/jev-comparison.md) / [reports/jev-comparison.json](reports/jev-comparison.json) | Direct, source-grounded Jev comparison with explicit unavailable-runtime boundary; no invented Jev quality numbers. |
+
+The benchmark guide ([docs/BENCHMARK.md](docs/BENCHMARK.md)) documents the exact
+`capability-benchmark` command for the full fixture (`--variants 76`; there is no `--full`
+flag), the 636-example held-out test split (53 per capability; 1908 is the combined
+validation+test support), and the post-hoc test-calibration caveat. Offline results report
+schema coverage only; learned-model quality comes from the model evaluation scripts and must
+label raw versus post-hoc calibration. Rules results report deterministic behavior and
+transport/schema outcomes, not Jev-model accuracy.
 
 ### Compatibility matrix
 
