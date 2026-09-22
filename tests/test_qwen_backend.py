@@ -2,7 +2,7 @@
 import io
 import unittest
 
-from jev_laya_free.multimodal.qwen_backend import QwenBackend
+from classify_goblin.multimodal.qwen_backend import QwenBackend
 
 try:
     import PIL.Image

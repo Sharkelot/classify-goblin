@@ -2,7 +2,7 @@
 
 Do not co-install this package and the official typesafe-sdk distribution.
 """
-from jev_laya_free import (
+from classify_goblin import (
     Choice, Noul, Score, TypeSafeClient, AsyncTypeSafeClient,
     ClientError, ValidationError,
 )

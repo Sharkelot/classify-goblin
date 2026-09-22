@@ -1,4 +1,4 @@
-"""Integration tests for the profile assessor CLI (JEV-MM-11).
+"""Integration tests for the profile assessor CLI (CG-MM-11).
 
 Covers the pure profile-dir parser on a realistic profile layout, the
 end-to-end CLI (roster + request JSON -> JSON result), CLI error paths
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jev_laya_free.profile_assessor import (
+from classify_goblin.profile_assessor import (
     RosterSnapshot,
     assess,
     parse_profile_dir,
@@ -20,7 +20,7 @@ from jev_laya_free.profile_assessor import (
 
 ROOT = Path(__file__).parent.parent
 FIX = Path(__file__).parent / 'fixtures' / 'profile_assessor'
-CLI = ROOT / 'src' / 'jev_laya_free' / 'profile_assessor' / 'cli.py'
+CLI = ROOT / 'src' / 'classify_goblin' / 'profile_assessor' / 'cli.py'
 
 
 def run_cli(*args):
@@ -145,7 +145,7 @@ class CliEndToEndTests(unittest.TestCase):
     def test_cli_digest_matches_module(self):
         snap = _load_roster('roster_2026-09-21.json')
         with open(FIX / 'req_code.json', encoding='utf-8') as fh:
-            from jev_laya_free.profile_assessor.schema import AssessmentRequest
+            from classify_goblin.profile_assessor.schema import AssessmentRequest
             req = AssessmentRequest.from_dict(json.load(fh))
         module_result = assess(req, snap)
         proc = run_cli('--roster', str(FIX / 'roster_2026-09-21.json'),

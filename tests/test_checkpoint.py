@@ -13,7 +13,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from jev_laya_free.checkpoint import (
+from classify_goblin.checkpoint import (
     ChecksumError,
     ManifestError,
     NoCanonicalArtifactError,
@@ -25,6 +25,11 @@ from jev_laya_free.checkpoint import (
     load_manifest,
     resolve_artifact,
     verify_checksum,
+)
+from classify_goblin.distilbert_model import (
+    CHECKPOINT_VERSION,
+    LEGACY_CHECKPOINT_VERSION,
+    checkpoint_config,
 )
 
 
@@ -57,8 +62,8 @@ def _manifest(**kw):
         "sha256": "a" * 64,
         "size": 0,
         "format": "zip",
-        "expected_files": ["head.pt", "jev_laya_config.json"],
-        "compatibility_version": "jev-laya-distilbert-v1",
+        "expected_files": ["head.pt", "classify_goblin_config.json"],
+        "compatibility_version": "classify-goblin-distilbert-v1",
     }
     base.update(kw)
     return base
@@ -67,7 +72,7 @@ def _manifest(**kw):
 def _good_zip():
     data = {
         "head.pt": b"HEADWEIGHTS",
-        "jev_laya_config.json": b'{"format": "jev-laya-distilbert-v1"}',
+        "classify_goblin_config.json": b'{"format": "classify-goblin-distilbert-v1"}',
     }
     return _zip_bytes(data), data
 
@@ -87,6 +92,25 @@ class Transport:
 
 
 class LoadManifestTests(unittest.TestCase):
+    def test_legacy_checkpoint_config_remains_readable_after_rename(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "jev_laya_config.json").write_text(
+                json.dumps({"format": LEGACY_CHECKPOINT_VERSION})
+            )
+            self.assertEqual(
+                checkpoint_config(d)["format"], LEGACY_CHECKPOINT_VERSION
+            )
+
+    def test_current_checkpoint_config_is_preferred(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "classify_goblin_config.json").write_text(
+                json.dumps({"format": CHECKPOINT_VERSION})
+            )
+            Path(d, "jev_laya_config.json").write_text(
+                json.dumps({"format": LEGACY_CHECKPOINT_VERSION})
+            )
+            self.assertEqual(checkpoint_config(d)["format"], CHECKPOINT_VERSION)
+
     def test_valid_manifest_round_trips(self):
         m = _manifest()
         with tempfile.TemporaryDirectory() as d:
@@ -94,7 +118,7 @@ class LoadManifestTests(unittest.TestCase):
             p.write_text(json.dumps(m))
             loaded = load_manifest(p)
         self.assertEqual(loaded["version"], "1.0.0")
-        self.assertEqual(loaded["compatibility_version"], "jev-laya-distilbert-v1")
+        self.assertEqual(loaded["compatibility_version"], "classify-goblin-distilbert-v1")
 
     def test_missing_required_key_fails(self):
         m = _manifest()
@@ -291,10 +315,10 @@ class InstallTests(unittest.TestCase):
             dest = install(loaded, transport, Path(d) / "cache")
             self.assertTrue((dest / "head.pt").is_file())
             self.assertEqual((dest / "head.pt").read_bytes(), files["head.pt"])
-            self.assertTrue((dest / "jev_laya_config.json").is_file())
+            self.assertTrue((dest / "classify_goblin_config.json").is_file())
 
     def test_missing_expected_file_fails_closed(self):
-        data = _zip_bytes({"head.pt": b"x"})  # jev_laya_config.json missing
+        data = _zip_bytes({"head.pt": b"x"})  # classify_goblin_config.json missing
         m = _manifest(sha256=_sha(data), size=len(data))
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "manifest.json"
@@ -318,7 +342,7 @@ class InstallTests(unittest.TestCase):
     def test_atomic_install_leaves_no_partial_dir_on_failure(self):
         # A traversal member makes extraction fail; the versioned dir must not
         # be left behind (only a cleaned-up temp dir, if any).
-        data = _zip_bytes({"../evil": b"boom", "head.pt": b"x", "jev_laya_config.json": b"{}"})
+        data = _zip_bytes({"../evil": b"boom", "head.pt": b"x", "classify_goblin_config.json": b"{}"})
         m = _manifest(sha256=_sha(data), size=len(data))
         with tempfile.TemporaryDirectory() as d:
             cache = Path(d) / "cache"

@@ -8,14 +8,14 @@ The benchmark is dependency-light and uses the same normalized request schema fo
 PYTHONPATH=src python scripts/benchmark.py --backend offline --fixture fixtures/benchmark-smoke.jsonl
 ```
 
-The fixture is committed and its SHA-256, git commit, Python version, seed, checkpoint, and service URL are recorded in JSON output. Add `--markdown` for a readable summary. The committed result is `reports/jev-offline-smoke.json`.
+The fixture is committed and its SHA-256, git commit, Python version, seed, checkpoint, and service URL are recorded in JSON output. Add `--markdown` for a readable summary. The committed result is `reports/classify-goblin-offline-smoke.json`.
 
 ## Rules backend
 
 In one terminal, start the loopback-only service:
 
 ```bash
-PYTHONPATH=src python -m jev_laya_free.server --backend rules --port 8093
+PYTHONPATH=src python -m classify_goblin.server --backend rules --port 8093
 ```
 
 Then run:
@@ -38,7 +38,7 @@ when inference is unavailable.
 ## Learned-model quality is out of scope
 
 Training, dataset generation, and the full held-out evaluation are not part of
-this runtime-only release; the `jev_laya_free.trainer` module does not exist in
+this runtime-only release; the `classify_goblin.trainer` module does not exist in
 this repository. A learned-model quality claim requires held-out support from
 the separate training environment and must label raw versus post-hoc
 calibration. This benchmark never produces one.

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Reproducible, dependency-free local benchmark for the JEV contract."""
+"""Reproducible, dependency-free local benchmark for the classify-goblin contract."""
 from __future__ import annotations
 import argparse, hashlib, json, os, platform, statistics, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from jev_laya_free.client import TypeSafeClient, ClientError
-from jev_laya_free.taxonomy import CAPABILITIES, questions
-from jev_laya_free.workflow import decide
+from classify_goblin.client import TypeSafeClient, ClientError
+from classify_goblin.taxonomy import CAPABILITIES, questions
+from classify_goblin.workflow import decide
 
 
 def _sha(path):
@@ -81,7 +81,7 @@ def run(args):
                        "calibration_note": "post-hoc test calibration is not an unbiased generalization estimate"}
         except (OSError, ValueError, TypeError):
             learned = {"source": str(quality_report), "status": "unreadable"}
-    result = {"schema_version": "jev-benchmark-1", "backend": args.backend,
+    result = {"schema_version": "classify-goblin-benchmark-1", "backend": args.backend,
       "learned_model_quality": learned,
       "deterministic_guard_behavior": {"cases": guards, "precedence_verified": guards[0]["decision"] == "terminal"},
       "fail_open": {"backend_outage_is_error": True, "advisory_does_not_authorize": True},
@@ -107,7 +107,7 @@ def main():
     p.add_argument("--verbose", action="store_true")
     args = p.parse_args(); result = run(args)
     if args.markdown:
-        print("# JEV benchmark\n\n" + "\n".join(f"- **{k}:** {v}" for k, v in result.items() if k not in ("per_capability", "deterministic_guard_behavior", "fail_open")))
+        print("# classify-goblin benchmark\n\n" + "\n".join(f"- **{k}:** {v}" for k, v in result.items() if k not in ("per_capability", "deterministic_guard_behavior", "fail_open")))
         print("\n## Per capability\n\n| Capability | Requests | Valid | Errors |\n|---|---:|---:|---:|")
         for k, v in result["per_capability"].items(): print(f"| {k} | {v['requests']} | {v['valid']} | {v['errors']} |")
     else: print(json.dumps(result, indent=2, sort_keys=True))

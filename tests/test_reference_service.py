@@ -8,9 +8,9 @@ import json
 import socket
 import threading
 import unittest
-from jev_laya_free import protocol
-from jev_laya_free.protocol_client import ProtocolClient, ProtocolClientError
-from jev_laya_free.reference_service import ReferenceServer
+from classify_goblin import protocol
+from classify_goblin.protocol_client import ProtocolClient, ProtocolClientError
+from classify_goblin.reference_service import ReferenceServer
 
 
 def _free_port() -> int:

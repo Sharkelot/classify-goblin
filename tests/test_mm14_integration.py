@@ -1,4 +1,4 @@
-"""JEV-MM-14: deterministic multimodal workflow + advisory typed routing.
+"""CG-MM-14: deterministic multimodal workflow + advisory typed routing.
 
 Regression tests for the deterministic/advisory boundary:
 
@@ -19,19 +19,19 @@ from datetime import datetime, timezone
 from contextlib import contextmanager
 from http.client import HTTPConnection
 
-from jev_laya_free import schema
-from jev_laya_free.client import ClientError
-from jev_laya_free.server import LocalServer
-from jev_laya_free.taxonomy import (
+from classify_goblin import schema
+from classify_goblin.client import ClientError
+from classify_goblin.server import LocalServer
+from classify_goblin.taxonomy import (
     EVIDENCE_HANDS, evidence_questions, profile_fit_question)
-from jev_laya_free.workflow import (
+from classify_goblin.workflow import (
     decide, guard, validate_profile_selection)
-from jev_laya_free.profile_assessor import (
+from classify_goblin.profile_assessor import (
     RosterSnapshot, AssessmentRequest, assess)
-from jev_laya_free.multimodal.qwen_service import (
+from classify_goblin.multimodal.qwen_service import (
     OpenAICompatClient, QwenArtifactBackend, QwenCapabilityUnavailable,
     _system_prompt)
-from jev_laya_free.artifacts import ResolvedArtifact
+from classify_goblin.artifacts import ResolvedArtifact
 
 
 @contextmanager
@@ -182,7 +182,7 @@ class EvidenceQuestionTests(unittest.TestCase):
     def test_round_trip_preserves_label_order(self):
         # Full server round-trip: per-capability evidence questions + a
         # profile-fit question keep their label order byte-for-byte.
-        from jev_laya_free.backends import RulesBackend
+        from classify_goblin.backends import RulesBackend
         questions = evidence_questions('pdf')
         questions['profile_fit'] = profile_fit_question(
             ('developer-goblin', 'video-goblin'))
@@ -461,7 +461,7 @@ class OutputIdentityTests(unittest.TestCase):
     def test_text_only_wire_compatibility_preserved(self):
         # A text-only /v1/systemone request with the new typed questions
         # still round-trips through the real server (no artifacts).
-        from jev_laya_free.backends import RulesBackend
+        from classify_goblin.backends import RulesBackend
         questions = evidence_questions('')
         body = schema.request({'model': 'local-default', 'state': 'hello',
                               'questions': questions})

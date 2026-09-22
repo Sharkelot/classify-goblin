@@ -6,9 +6,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from jev_laya_free import TypeSafeClient, AsyncTypeSafeClient, schema
-from jev_laya_free.artifacts import ArtifactBroker, ArtifactUnavailable, ArtifactSelectionError, validate
-from jev_laya_free.backends import RulesBackend
+from classify_goblin import TypeSafeClient, AsyncTypeSafeClient, schema
+from classify_goblin.artifacts import ArtifactBroker, ArtifactUnavailable, ArtifactSelectionError, validate
+from classify_goblin.backends import RulesBackend
 from test_contract import running, post, QUESTIONS
 
 
@@ -61,7 +61,7 @@ class ArtifactTests(unittest.TestCase):
                         {'path': 'missing'}, {'sha256': '0' * 64}):
             with self.subTest(changes=changes), self.assertRaises(schema.ValidationError):
                 ArtifactBroker([str(self.root)]).resolve([{**self.ref, **changes}])
-        with patch('jev_laya_free.artifacts.MAX_ARTIFACT_BYTES', 4):
+        with patch('classify_goblin.artifacts.MAX_ARTIFACT_BYTES', 4):
             with self.assertRaises(schema.ValidationError):
                 ArtifactBroker([str(self.root)]).resolve([self.ref])
 
@@ -73,7 +73,7 @@ class ArtifactTests(unittest.TestCase):
                 raw['usage']['path'] = '/secret/path'
                 raw['usage']['bytes'] = 'sensitive'
                 return raw
-        with patch.dict(os.environ, JEV_ARTIFACT_ROOTS=str(self.root)), running(Backend()) as (server, url):
+        with patch.dict(os.environ, CLASSIFY_GOBLIN_ARTIFACT_ROOTS=str(self.root)), running(Backend()) as (server, url):
             client = TypeSafeClient(base_url=url, retries=0)
             result = client.systemOne(state='', questions=QUESTIONS, artifacts=[self.ref])
             self.assertEqual(set(result.usage), {'input_tokens', 'output_tokens', 'artifacts'})
@@ -86,7 +86,7 @@ class ArtifactTests(unittest.TestCase):
             status, result = post(server, schema.dumps(bad))
             self.assertEqual(status, 422)
             self.assertIn('digest mismatch', result['error']['message'])
-        with patch.dict(os.environ, JEV_ARTIFACT_ROOTS=str(self.root)), running() as (server, url):
+        with patch.dict(os.environ, CLASSIFY_GOBLIN_ARTIFACT_ROOTS=str(self.root)), running() as (server, url):
             self.assertEqual(post(server, schema.dumps(self.body))[0], 503)
             self.assertEqual(post(server, schema.dumps({**self.body, 'artifacts': []}))[0], 200)
 
@@ -94,7 +94,7 @@ class ArtifactTests(unittest.TestCase):
         class InvalidPage(RulesBackend):
             def predict_artifacts(self, *args):
                 raise ArtifactSelectionError('/secret/document.pdf')
-        with patch.dict(os.environ, JEV_ARTIFACT_ROOTS=str(self.root)), running(InvalidPage()) as (server, url):
+        with patch.dict(os.environ, CLASSIFY_GOBLIN_ARTIFACT_ROOTS=str(self.root)), running(InvalidPage()) as (server, url):
             status, body = post(server, schema.dumps(self.body))
             self.assertEqual(status, 422)
             self.assertNotIn('secret', schema.dumps(body))
@@ -103,7 +103,7 @@ class ArtifactTests(unittest.TestCase):
         class Broken(RulesBackend):
             def predict_artifacts(self, *args):
                 raise RuntimeError('/secret/path raw bytes')
-        with patch.dict(os.environ, JEV_ARTIFACT_ROOTS=str(self.root)), running(Broken()) as (server, url):
+        with patch.dict(os.environ, CLASSIFY_GOBLIN_ARTIFACT_ROOTS=str(self.root)), running(Broken()) as (server, url):
             status, body = post(server, schema.dumps(self.body))
             self.assertEqual(status, 503)
             self.assertNotIn('secret', schema.dumps(body))
@@ -111,13 +111,13 @@ class ArtifactTests(unittest.TestCase):
     def test_no_root_stability_is_clean_503(self):
         # A6/T3: with no artifact roots configured the server stays stable —
         # a clean 503, no traceback, and no filesystem/secret leakage.
-        with patch.dict(os.environ, {'JEV_ARTIFACT_ROOTS': ''}):
+        with patch.dict(os.environ, {'CLASSIFY_GOBLIN_ARTIFACT_ROOTS': ''}):
             with running() as (server, url):
                 status, body = post(server, schema.dumps(self.body))
                 self.assertEqual(status, 503)
                 self.assertIn('backend unavailable', body['error']['message'])
                 self.assertNotIn('secret', schema.dumps(body))
-                self.assertNotIn('JEV_ARTIFACT_ROOTS', schema.dumps(body))
+                self.assertNotIn('CLASSIFY_GOBLIN_ARTIFACT_ROOTS', schema.dumps(body))
 
 
 if __name__ == '__main__':

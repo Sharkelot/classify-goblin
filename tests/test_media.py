@@ -3,8 +3,8 @@ import hashlib
 import io
 import unittest
 
-from jev_laya_free.artifacts import ResolvedArtifact
-from jev_laya_free.multimodal import Limits, prepare_media, prepare_video
+from classify_goblin.artifacts import ResolvedArtifact
+from classify_goblin.multimodal import Limits, prepare_media, prepare_video
 
 try:
     import PIL.Image
@@ -187,7 +187,7 @@ class DecompressionBombTests(unittest.TestCase):
     def test_bomb_png_rejected(self):
         if PIL is None:
             self.skipTest('Pillow not installed')
-        from jev_laya_free.multimodal.preprocessing import preprocess_image
+        from classify_goblin.multimodal.preprocessing import preprocess_image
         # 4096x4096 = 16,777,216 pixels > 16,000,000 default budget.
         # A 1x1 image with a huge IHDR is not valid; use a real large PNG.
         # Generate a 4096x4096 PNG in-memory (single-color, compresses tiny).

@@ -1,4 +1,4 @@
-"""JEV-MM-12: local Qwen image/PDF/code typed backend — fake/injected transport tests.
+"""CG-MM-12: local Qwen image/PDF/code typed backend — fake/injected transport tests.
 
 These tests use an injected OpenAI-compatible transport (a fake local endpoint),
 never a live external service. They cover: image, PDF selected page, code,
@@ -11,10 +11,10 @@ import threading
 import unittest
 from http.client import HTTPConnection
 
-from jev_laya_free import schema
-from jev_laya_free.artifacts import ResolvedArtifact
-from jev_laya_free.server import LocalServer
-from jev_laya_free.multimodal.qwen_service import (
+from classify_goblin import schema
+from classify_goblin.artifacts import ResolvedArtifact
+from classify_goblin.server import LocalServer
+from classify_goblin.multimodal.qwen_service import (
     OpenAICompatClient,
     QwenArtifactBackend,
     QwenCapabilityUnavailable,
@@ -94,7 +94,7 @@ class ClientTests(unittest.TestCase):
 
     def test_env_resolved_credential_not_printed(self):
         import os
-        with _patch_env({'JEV_QWEN_API_KEY': 'sekret'}):
+        with _patch_env({'CLASSIFY_GOBLIN_QWEN_API_KEY': 'sekret'}):
             client = OpenAICompatClient(base_url='http://127.0.0.1:9999')
             self.assertEqual(client.api_key, 'sekret')
             # The credential is held, not embedded in the URL or model id.
@@ -126,7 +126,7 @@ class CapabilityNegotiationTests(unittest.TestCase):
         self.assertFalse(backend._supported('audio'))
         # Exercise the gate through predict_artifacts: a ResolvedArtifact whose
         # kind is not in the supported set raises before any HTTP call.
-        from jev_laya_free.artifacts import ResolvedArtifact
+        from classify_goblin.artifacts import ResolvedArtifact
         audio = ResolvedArtifact('a1', 'audio', 'audio/mpeg', '0' * 64, (), {}, b'x')
         with self.assertRaises(QwenCapabilityUnavailable) as cm:
             backend.predict_artifacts('', QUESTIONS, [audio])
@@ -143,7 +143,7 @@ class CapabilityNegotiationTests(unittest.TestCase):
         self.assertIn('answers', raw)
 
     def test_video_is_verified_and_proceeds(self):
-        # JEV-MM-13: video is verified by the local probe (JEV-MM-13 live probe,
+        # CG-MM-13: video is verified by the local probe (CG-MM-13 live probe,
         # 2026-09-21: video_url data URI -> multimodal_tokens.video, correct
         # answer). The backend must accept a video artifact and proceed to HTTP.
         transport = _ok_transport()
@@ -431,7 +431,7 @@ class QwenServerWiringTests(unittest.TestCase):
 
     def test_text_only_request_preserves_existing_behavior(self):
         # A backend with no predict_artifacts serves text-only requests normally.
-        from jev_laya_free.backends import RulesBackend
+        from classify_goblin.backends import RulesBackend
         server, thread = self._start(RulesBackend())
         try:
             body = schema.request({'model': 'local-default', 'state': 'hello world',
@@ -450,14 +450,14 @@ class QwenServerWiringTests(unittest.TestCase):
         # server reaches the "no predict_artifacts" branch.
         import hashlib
         import tempfile
-        from jev_laya_free.backends import RulesBackend
+        from classify_goblin.backends import RulesBackend
         png = _image_bytes()
         digest = hashlib.sha256(png).hexdigest()
         with tempfile.TemporaryDirectory() as root:
             with open(os.path.join(root, 'x.png'), 'wb') as fh:
                 fh.write(png)
-            old_roots = os.environ.get('JEV_ARTIFACT_ROOTS')
-            os.environ['JEV_ARTIFACT_ROOTS'] = root
+            old_roots = os.environ.get('CLASSIFY_GOBLIN_ARTIFACT_ROOTS')
+            os.environ['CLASSIFY_GOBLIN_ARTIFACT_ROOTS'] = root
             try:
                 server, thread = self._start(RulesBackend())
                 try:
@@ -473,9 +473,9 @@ class QwenServerWiringTests(unittest.TestCase):
                     self._stop(server, thread)
             finally:
                 if old_roots is None:
-                    os.environ.pop('JEV_ARTIFACT_ROOTS', None)
+                    os.environ.pop('CLASSIFY_GOBLIN_ARTIFACT_ROOTS', None)
                 else:
-                    os.environ['JEV_ARTIFACT_ROOTS'] = old_roots
+                    os.environ['CLASSIFY_GOBLIN_ARTIFACT_ROOTS'] = old_roots
 
     def test_unsupported_modality_fails_closed_at_backend(self):
         # The Qwen backend rejects an unverified modality (audio) with a
@@ -498,8 +498,8 @@ class QwenServerWiringTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             with open(os.path.join(root, 'img.png'), 'wb') as fh:
                 fh.write(png)
-            old_roots = os.environ.get('JEV_ARTIFACT_ROOTS')
-            os.environ['JEV_ARTIFACT_ROOTS'] = root
+            old_roots = os.environ.get('CLASSIFY_GOBLIN_ARTIFACT_ROOTS')
+            os.environ['CLASSIFY_GOBLIN_ARTIFACT_ROOTS'] = root
             try:
                 answer = self._valid_answer(
                     {'q': {'type': 'choice', 'instructions': 'Route',
@@ -529,9 +529,9 @@ class QwenServerWiringTests(unittest.TestCase):
                     self._stop(server, thread)
             finally:
                 if old_roots is None:
-                    os.environ.pop('JEV_ARTIFACT_ROOTS', None)
+                    os.environ.pop('CLASSIFY_GOBLIN_ARTIFACT_ROOTS', None)
                 else:
-                    os.environ['JEV_ARTIFACT_ROOTS'] = old_roots
+                    os.environ['CLASSIFY_GOBLIN_ARTIFACT_ROOTS'] = old_roots
 
 
 class _patch_env:
@@ -560,19 +560,19 @@ if __name__ == '__main__':
 
 
 class LiveSmokeTests(unittest.TestCase):
-    """Optional live smoke test — skipped unless JEV_QWEN_LIVE=1.
+    """Optional live smoke test — skipped unless CLASSIFY_GOBLIN_QWEN_LIVE=1.
 
     When enabled, it uses the REAL (non-injected) transport against the
-    loopback endpoint named by JEV_QWEN_BASE_URL, exercising one image and
+    loopback endpoint named by CLASSIFY_GOBLIN_QWEN_BASE_URL, exercising one image and
     one code artifact end-to-end and asserting a conforming typed response.
     """
 
     def test_live_image_and_code(self):
-        if os.environ.get('JEV_QWEN_LIVE') != '1':
-            self.skipTest('live smoke test disabled (set JEV_QWEN_LIVE=1)')
-        base_url = os.environ.get('JEV_QWEN_BASE_URL', 'http://127.0.0.1:8091')
+        if os.environ.get('CLASSIFY_GOBLIN_QWEN_LIVE') != '1':
+            self.skipTest('live smoke test disabled (set CLASSIFY_GOBLIN_QWEN_LIVE=1)')
+        base_url = os.environ.get('CLASSIFY_GOBLIN_QWEN_BASE_URL', 'http://127.0.0.1:8091')
         client = OpenAICompatClient(base_url=base_url,
-                                   api_key=os.environ.get('JEV_QWEN_API_KEY'),
+                                   api_key=os.environ.get('CLASSIFY_GOBLIN_QWEN_API_KEY'),
                                    timeout=120)
         backend = QwenArtifactBackend(client=client)
         img = _artifact('image', _image_bytes(), 'image/png')

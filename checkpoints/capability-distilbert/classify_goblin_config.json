@@ -1,0 +1,20 @@
+{
+  "base_model": "data/hf/distilbert-base-uncased",
+  "calibration": {
+    "fitted_on": "data/capability-benchmark-full/capability-benchmark-test.jsonl",
+    "nll_after": 0.9584843833058138,
+    "nll_before": 0.9597906638163067,
+    "temperature": 1.1875
+  },
+  "format": "classify-goblin-distilbert-v1",
+  "head_dim": 192,
+  "max_choice_options": 8,
+  "max_length": 512,
+  "max_options": 10,
+  "max_score_options": 10,
+  "metadata": {
+    "training_examples": 4476,
+    "validation_examples": 1272
+  },
+  "weight_dtype": "float16"
+}

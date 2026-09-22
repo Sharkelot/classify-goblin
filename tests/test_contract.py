@@ -7,11 +7,11 @@ from contextlib import contextmanager
 from http.client import HTTPConnection
 from unittest.mock import patch
 
-from jev_laya_free import Choice, Score, Noul, TypeSafeClient, ClientError, ValidationError
-from jev_laya_free import schema
-from jev_laya_free.backends import RulesBackend, LayaBackend
-from jev_laya_free.server import LocalServer
-from jev_laya_free.workflow import decide, guard
+from classify_goblin import Choice, Score, Noul, TypeSafeClient, ClientError, ValidationError
+from classify_goblin import schema
+from classify_goblin.backends import RulesBackend, LayaBackend
+from classify_goblin.server import LocalServer
+from classify_goblin.workflow import decide, guard
 
 QUESTIONS = {
     'route': Choice(instructions='Route', options={'code': 'source code', 'pdf': 'document'}),
@@ -155,7 +155,7 @@ class HTTPTests(unittest.TestCase):
             self.assertEqual(post(server, '{}', {'Content-Type': 'text/plain'})[0], 415)
             self.assertEqual(post(server, '{}', {'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked'})[0], 400)
             with self.assertRaises(ClientError) as cm:
-                TypeSafeClient(base_url=url, model='jev-latest', retries=0).system_one(state='', questions=QUESTIONS)
+                TypeSafeClient(base_url=url, model='classify-goblin-latest', retries=0).system_one(state='', questions=QUESTIONS)
             self.assertEqual(cm.exception.status, 422)
 
     def test_invalid_backend_is_not_success(self):
@@ -192,7 +192,7 @@ class HTTPTests(unittest.TestCase):
             for length in ('9'*100, '²'):
                 status, _ = post(server, '{}', {'Content-Type': 'application/json', 'Content-Length': length})
                 self.assertEqual(status, 400)
-        from jev_laya_free.client import NoRedirect
+        from classify_goblin.client import NoRedirect
         self.assertIsNone(NoRedirect().redirect_request(None, None, 302, '', {}, 'http://example.com'))
 
     def test_client_local_only(self):

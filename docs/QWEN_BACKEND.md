@@ -1,23 +1,23 @@
-# JEV-MM-12 / JEV-MM-13 — Local Qwen typed backend (image/PDF/code/video/audio)
+# CG-MM-12 / CG-MM-13 — Local Qwen typed backend (image/PDF/code/video/audio)
 
 A local-only, fail-closed artifact backend that converts verified
 `ResolvedArtifact` bytes into a typed JSON decision via the loopback
 OpenAI-compatible Qwen endpoint. It is wired through `predict_artifacts`
-so text-only requests keep their existing behavior. JEV-MM-13 adds the
+so text-only requests keep their existing behavior. CG-MM-13 adds the
 bounded video adapter (probe-gated, frame-sampled) and the fail-closed
 audio adapter, and wires video into the verified message shape.
 
 ## Files
 
-- **Backend + client:** `src/jev_laya_free/multimodal/qwen_service.py`
+- **Backend + client:** `src/classify_goblin/multimodal/qwen_service.py`
   - `OpenAICompatClient` — loopback-only OpenAI-compatible transport
-    (explicit endpoint or `JEV_QWEN_BASE_URL`; credential from
-    `JEV_QWEN_API_KEY`; bounded 1..120 s timeout).
+    (explicit endpoint or `CLASSIFY_GOBLIN_QWEN_BASE_URL`; credential from
+    `CLASSIFY_GOBLIN_QWEN_API_KEY`; bounded 1..120 s timeout).
   - `QwenArtifactBackend` — capability-gated, fail-closed; `predict` and
     `predict_artifacts` both route through `schema.answers` validation.
-- **Server wiring:** `src/jev_laya_free/server.py` — `--backend qwen`
-  builds a `QwenArtifactBackend` from `JEV_QWEN_BASE_URL` /
-  `JEV_QWEN_TIMEOUT`; the handler already routes nonempty `artifacts`
+- **Server wiring:** `src/classify_goblin/server.py` — `--backend qwen`
+  builds a `QwenArtifactBackend` from `CLASSIFY_GOBLIN_QWEN_BASE_URL` /
+  `CLASSIFY_GOBLIN_QWEN_TIMEOUT`; the handler already routes nonempty `artifacts`
   through `predict_artifacts` and returns 503 when the backend cannot
   serve them (no fallback to text).
 - **Tests:** `tests/test_qwen_service.py` — fake/injected transport only
@@ -26,10 +26,10 @@ audio adapter, and wires video into the verified message shape.
 
 ## Modalities: verified vs. unavailable
 
-The backend declares `SUPPORTED = {image, pdf, code, video}`. The JEV-MM-01
+The backend declares `SUPPORTED = {image, pdf, code, video}`. The CG-MM-01
 runtime probe (historical evidence, SHA
 `31ed208a11d720d7aa06f0c87b74923318ed4f4cc41f4ac9a3cb6005e7997e3e`)
-and the fresh JEV-MM-13 probe (2026-09-21) observed the following against
+and the fresh CG-MM-13 probe (2026-09-21) observed the following against
 the live endpoint:
 
 | Modality | Probe state | This card |
@@ -37,13 +37,13 @@ the live endpoint:
 | image    | verified    | supported |
 | code     | (new)       | supported |
 | pdf      | unavailable | supported (declared; probe did not verify) |
-| video    | verified    | supported (JEV-MM-13: adapter + message shape) |
+| video    | verified    | supported (CG-MM-13: adapter + message shape) |
 | audio    | unavailable | fail-closed adapter (capability `audio_not_verified`) |
 
-`pdf` and `code` are the new capabilities JEV-MM-12 adds; `pdf` was not
+`pdf` and `code` are the new capabilities CG-MM-12 adds; `pdf` was not
 verified by the historical probe, so it is declared supported by the
 backend but its live verification is the responsibility of a future probe
-run. **Video** is verified by the JEV-MM-13 probe (2026-09-21: a
+run. **Video** is verified by the CG-MM-13 probe (2026-09-21: a
 `video_url` data URI returned HTTP 200 with `multimodal_tokens.video`
 and a correct answer), so the backend now declares it supported and the
 workflow routes `video` → `inspect_video`. **Audio** is not supported by
@@ -54,7 +54,7 @@ transcription route), so the audio adapter is fail-closed: it returns
 modalities (unknown) fail closed with a stable
 `QwenCapabilityUnavailable` → 503, never a fallback to text.
 
-## Video adapter (JEV-MM-13)
+## Video adapter (CG-MM-13)
 
 `prepare_video(artifact, *, probe_verified=False, frame_sampler=None,
 limits=DEFAULT_LIMITS)` returns a `MediaPayload`. It is **probe-gated and
@@ -76,7 +76,7 @@ height, bytes)` plus a SHA-256 of the JPEG bytes; the raw video bytes are
 not stored or logged. The Qwen backend sends the video as a `video_url`
 data URI (the verified shape), not as individual frames.
 
-## Audio adapter (JEV-MM-13)
+## Audio adapter (CG-MM-13)
 
 `prepare_audio(artifact, *, probe_verified=False, limits=AudioLimits())`
 returns a `MediaPayload`. It is **fail-closed**: unless `probe_verified`
@@ -109,7 +109,7 @@ Probed **2026-09-21** against the live loopback vLLM endpoint
   deterministic contract; the live probe is reported as-is and does not
   substitute for them.
 
-### JEV-MM-13 probe (2026-09-21, fresh)
+### CG-MM-13 probe (2026-09-21, fresh)
 
 Probed **2026-09-21** against the same live loopback endpoint
 (`http://127.0.0.1:8080`, model `Qwen3.8`):
@@ -125,7 +125,7 @@ Probed **2026-09-21** against the same live loopback endpoint
   claimed.
 - **No auth header required** (loopback, vLLM default).
 
-## JEV-MM-14 — capability/task identity in the prompt
+## CG-MM-14 — capability/task identity in the prompt
 
 The system prompt now makes the capability and (optional) task identity
 explicit instead of embedding them only in the raw state:
@@ -144,13 +144,13 @@ non-conforming answer still fails closed (502/503, no fallback).
 
 ## Config boundary
 
-- Endpoint: explicit `base_url` or `JEV_QWEN_BASE_URL`
+- Endpoint: explicit `base_url` or `CLASSIFY_GOBLIN_QWEN_BASE_URL`
   (default `http://127.0.0.1:8080`); loopback-only (`127.0.0.1` /
   `localhost`), no userinfo, no path.
-- Credential: `JEV_QWEN_API_KEY` (env); never embedded in the URL or
+- Credential: `CLASSIFY_GOBLIN_QWEN_API_KEY` (env); never embedded in the URL or
   model id, never printed.
-- Model: `JEV_QWEN_MODEL` (default `Qwen3.8`).
-- Timeout: bounded 1..120 s (`JEV_QWEN_TIMEOUT` for the server entry
+- Model: `CLASSIFY_GOBLIN_QWEN_MODEL` (default `Qwen3.8`).
+- Timeout: bounded 1..120 s (`CLASSIFY_GOBLIN_QWEN_TIMEOUT` for the server entry
   point).
 - No filesystem paths or arbitrary URLs are sent; artifacts are
   base64-encoded in-memory bytes.

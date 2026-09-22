@@ -1,4 +1,4 @@
-# Hermes Profile Assessor (JEV-MM-11)
+# Hermes Profile Assessor (CG-MM-11)
 
 Advisory-only profile fit assessment for Kanban task routing. The assessor
 reads a sanitized profile roster snapshot, applies deterministic
@@ -58,7 +58,7 @@ The dispatcher revalidates the selected profile and owns every side effect.
 ### Module API
 
 ```python
-from jev_laya_free.profile_assessor import (
+from classify_goblin.profile_assessor import (
     RosterSnapshot, AssessmentRequest, assess, revalidate)
 
 snapshot = RosterSnapshot.from_dict(json.load(open('roster.json')))
@@ -72,11 +72,11 @@ result = assess(request, snapshot)
 
 ```bash
 # Roster + request -> assessment
-python -m jev_laya_free.profile_assessor.cli \
+python -m classify_goblin.profile_assessor.cli \
     --roster roster.json --request request.json
 
 # Parse profile dirs directly (no roster file)
-python -m jev_laya_free.profile_assessor.cli --profiles-root DIR
+python -m classify_goblin.profile_assessor.cli --profiles-root DIR
 ```
 
 Exit codes: 0 = success, 2 = missing/invalid input.
@@ -167,7 +167,7 @@ All fields except `task_kind` are optional with safe defaults.
   output. Ties break by name ascending.
 - **Fail-closed**: unknown values exclude the candidate with a fixed
   reason code, never a silent pass.
-- **Revalidation gate (JEV-MM-14)**: `workflow.validate_profile_selection(
+- **Revalidation gate (CG-MM-14)**: `workflow.validate_profile_selection(
   assessment, fresh_snapshot)` is the deterministic gate a caller must
   pass before invoking Hermes Kanban. Only a `recommend` verdict is
   eligible; the selected profile is the first ranked candidate that

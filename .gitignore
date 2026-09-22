@@ -61,7 +61,7 @@ checkpoints/*
 # Re-include the calibration config (requires un-ignoring the parent dir first).
 !checkpoints/local-distilbert/
 checkpoints/local-distilbert/*
-!checkpoints/local-distilbert/jev_laya_config.json
+!checkpoints/local-distilbert/classify_goblin_config.json
 !checkpoints/capability-distilbert/
 checkpoints/capability-distilbert/*
-!checkpoints/capability-distilbert/jev_laya_config.json
+!checkpoints/capability-distilbert/classify_goblin_config.json

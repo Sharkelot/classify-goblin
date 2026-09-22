@@ -2,16 +2,16 @@
 
 This runtime ships the offline multimodal **preprocessing** path only. Training,
 dataset generation, and the dataset converter are not part of this release and
-are not shipped with it; the `jev_laya_free.trainer` module does not exist in
+are not shipped with it; the `classify_goblin.trainer` module does not exist in
 this repository.
 
 ## What is shipped
 
-The opt-in preprocessing functions in `jev_laya_free.multimodal` return
+The opt-in preprocessing functions in `classify_goblin.multimodal` return
 deterministic, JSON-compatible feature records from in-memory text/bytes. They
 are not registered in the request schema, client, backend, or server, and they
 add no decision, explanation, or rationale. Full behavior is documented in
-`src/jev_laya_free/multimodal/README.md`.
+`src/classify_goblin/multimodal/README.md`.
 
 * `preprocess_code` and `preprocess_pdf` — no libraries required for text or
   code; optional `pypdf` for PDF extraction; optional Pillow for image
@@ -45,7 +45,7 @@ No model, service, or network is required for any of these paths.
 
 ## What is not shipped
 
-* The dataset converter (the removed `jev_laya_free.trainer.conversion` module — training is not shipped) and its source policy for AgentHazard, ETO, Hermes, Sentinel, Pi sessions, and Visual/GUI sources.
+* The dataset converter (the removed `classify_goblin.trainer.conversion` module — training is not shipped) and its source policy for AgentHazard, ETO, Hermes, Sentinel, Pi sessions, and Visual/GUI sources.
 * The `configs/dataset_sources.json` file remains in the repository as the
   recorded source policy, but no in-repo command consumes it.
 * Train/validation/test JSONL generation, manifests, and calibration data.

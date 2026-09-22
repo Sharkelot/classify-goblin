@@ -1,4 +1,4 @@
-# Independent Client for the Jev-Compatible Protocol
+# Independent Client for the classify-goblin Typed-Decision Protocol
 
 This is a minimal, dependency-free Python client for the typed-decision
 protocol described in [PROTOCOL.md](./PROTOCOL.md). It is written
@@ -13,7 +13,7 @@ third-party packages.
 ## Quick start
 
 ```python
-from jev_laya_free.protocol_client import ProtocolClient, ProtocolClientError
+from classify_goblin.protocol_client import ProtocolClient, ProtocolClientError
 
 client = ProtocolClient(base_url="http://127.0.0.1:8093", retries=2)
 
@@ -42,8 +42,8 @@ client = ProtocolClient(base_url="http://127.0.0.1:8093", api_key="secret")
 
 | Parameter | Default | Description |
 |---|---|---|
-| `base_url` | `JEV_PROTOCOL_BASE_URL` env or `http://127.0.0.1:8093` | Loopback HTTP origin. Must be `http`, host `127.0.0.1`/`localhost`, path empty or `/`, no query/fragment/credentials. |
-| `api_key` | `JEV_LOCAL_API_KEY` / `TYPESAFE_API_KEY` env | Optional bearer token. ASCII, printable, non-empty. |
+| `base_url` | `http://127.0.0.1:8093` | Loopback HTTP origin. Must be `http`, host `127.0.0.1`/`localhost`, path empty or `/`, no query/fragment/credentials. |
+| `api_key` | `None` | Optional bearer token. ASCII, printable, non-empty. Pass it explicitly; this independent client does not read environment variables. |
 | `model` | `"local-default"` | Default model name sent when `system_one` is called without `model`. |
 | `timeout` | `5.0` | Per-request timeout in seconds. 0 < timeout ≤ 60. |
 | `retries` | `2` | Retry count on `429, 502, 503, 504, 529`. 0..5. |
@@ -86,7 +86,7 @@ closing), but it is provided for API symmetry with the existing
 - `status=<int>` — server returned a non-retryable HTTP error.
 
 ```python
-from jev_laya_free.protocol_client import ProtocolClient, ProtocolClientError
+from classify_goblin.protocol_client import ProtocolClient, ProtocolClientError
 
 try:
     client.system_one(state=42, questions={...})  # 42 is not a valid state
@@ -102,7 +102,7 @@ service:
 
 1. Start the reference service:
    ```bash
-   PYTHONPATH=src python -m jev_laya_free.reference_service --port 8093
+   PYTHONPATH=src python -m classify_goblin.reference_service --port 8093
    ```
 2. Run the compatibility tests:
    ```bash

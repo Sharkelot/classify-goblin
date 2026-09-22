@@ -1,6 +1,6 @@
 """Run against a separately started local server."""
 import json
-from jev_laya_free import Choice, Noul, Score, TypeSafeClient
+from classify_goblin import Choice, Noul, Score, TypeSafeClient
 
 with TypeSafeClient() as client:
     result = client.systemOne(

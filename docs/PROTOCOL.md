@@ -1,4 +1,4 @@
-# Jev-Compatible Typed-Decision Protocol
+# classify-goblin Typed-Decision Protocol
 
 A minimal, dependency-free wire contract for a loopback typed-decision
 service. It is intentionally small so that a third party can implement an
@@ -12,7 +12,7 @@ domain semantics — a backend may answer with any deterministic or learned
 model, as long as the answers conform to the schema.
 
 **Single source of truth.** The machine-readable constants and validators
-live in [`src/jev_laya_free/protocol.py`](../src/jev_laya_free/protocol.py).
+live in [`src/classify_goblin/protocol.py`](../src/classify_goblin/protocol.py).
 If this document and that module disagree, the module wins. The module is
 exercised by `tests/test_protocol_spec.py`.
 
@@ -96,7 +96,7 @@ The server normalizes questions before inference:
 The client must apply the same normalization before validating the
 response, so that answer-key lookups use the canonical `criteria` dict.
 
-## JEV-MM-14 — per-capability typed evidence questions
+## CG-MM-14 — per-capability typed evidence questions
 
 The workflow now sends **per-capability** typed questions instead of a
 single undifferentiated global `next_hand`. `taxonomy.evidence_questions(modality)`
@@ -200,14 +200,14 @@ Statuses `429, 502, 503, 504, 529` are **retryable** by the client.
 ## Reference service
 
 The reference implementation lives in
-[`src/jev_laya_free/reference_service.py`](../src/jev_laya_free/reference_service.py).
+[`src/classify_goblin/reference_service.py`](../src/classify_goblin/reference_service.py).
 
 ```bash
 # Start (loopback only, port 8093, no auth)
-PYTHONPATH=src python -m jev_laya_free.reference_service --port 8093
+PYTHONPATH=src python -m classify_goblin.reference_service --port 8093
 
 # With bearer-token auth
-JEV_LOCAL_API_KEY=secret PYTHONPATH=src python -m jev_laya_free.reference_service --port 8093
+CLASSIFY_GOBLIN_LOCAL_API_KEY=secret PYTHONPATH=src python -m classify_goblin.reference_service --port 8093
 
 # Health check
 curl http://127.0.0.1:8093/health
@@ -233,6 +233,6 @@ A third-party client is **compatible** with this protocol if and only if:
 6. It rejects non-loopback base URLs at construction time.
 
 The reference client in
-[`src/jev_laya_free/protocol_client.py`](../src/jev_laya_free/protocol_client.py)
+[`src/classify_goblin/protocol_client.py`](../src/classify_goblin/protocol_client.py)
 satisfies all six. `tests/test_reference_service.py` exercises the full
 round-trip against the reference service.

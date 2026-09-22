@@ -1,4 +1,4 @@
-"""JEV-MM-13: bounded video adapter — injected decoder tests + real ffmpeg/ffprobe.
+"""CG-MM-13: bounded video adapter — injected decoder tests + real ffmpeg/ffprobe.
 
 Covers: fail-closed without probe, verified no-sampler, sampler ok, sampler
 failure (partial), oversized bytes, oversized duration, frame-budget overflow,
@@ -9,9 +9,9 @@ import hashlib
 import struct
 import unittest
 
-from jev_laya_free.artifacts import ResolvedArtifact
-from jev_laya_free.multimodal import prepare_video
-from jev_laya_free.multimodal.video import (
+from classify_goblin.artifacts import ResolvedArtifact
+from classify_goblin.multimodal import prepare_video
+from classify_goblin.multimodal.video import (
     FrameSamplerResult,
     VideoDecoderError,
     VideoDecoderTimeout,
@@ -72,7 +72,7 @@ class VideoPolicyTests(unittest.TestCase):
         self.assertEqual(payload.capabilities.get('frame_sampling'), 'extraction_failed')
 
     def test_oversize_bytes(self):
-        from jev_laya_free.multimodal import Limits
+        from classify_goblin.multimodal import Limits
         payload = prepare_video(_artifact(b'x' * (9 * 1024 * 1024)), probe_verified=True,
                                limits=Limits(max_bytes=8 * 1024 * 1024))
         self.assertEqual(payload.status, 'unavailable')
@@ -144,7 +144,7 @@ class DefaultFrameSamplerTests(unittest.TestCase):
     def setUpClass(cls):
         import subprocess
         import os
-        cls.tmpdir = '/tmp/jev-mm-13-test'
+        cls.tmpdir = '/tmp/classify-goblin-mm-13-test'
         os.makedirs(cls.tmpdir, exist_ok=True)
         cls.mp4 = os.path.join(cls.tmpdir, 'tiny.mp4')
         subprocess.run(
@@ -213,7 +213,7 @@ class DefaultFrameSamplerTests(unittest.TestCase):
 
     def test_default_sampler_unsupported_runtime(self):
         # Simulate ffprobe not being available.
-        import jev_laya_free.multimodal.video as video_mod
+        import classify_goblin.multimodal.video as video_mod
         orig = video_mod.subprocess.run
         def no_ffprobe(*a, **kw):
             raise FileNotFoundError('ffprobe')

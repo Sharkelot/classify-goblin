@@ -42,7 +42,7 @@ class BenchmarkCLITests(unittest.TestCase):
         self.assertEqual(p.returncode, 2)
         self.assertEqual(json.loads(p.stdout)["errors"], 12)
         sys.path.insert(0, str(ROOT / "src"))
-        from jev_laya_free.client import TypeSafeClient
+        from classify_goblin.client import TypeSafeClient
         with self.assertRaises(Exception):
             TypeSafeClient(base_url="https://example.com")
 

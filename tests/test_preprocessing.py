@@ -5,11 +5,11 @@ from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from jev_laya_free.multimodal import (
+from classify_goblin.multimodal import (
     Limits, preprocess_code, preprocess_image, preprocess_pdf, preprocess_text,
 )
 
-MODULE = 'jev_laya_free.multimodal.preprocessing'
+MODULE = 'classify_goblin.multimodal.preprocessing'
 
 
 class TextCodeTests(unittest.TestCase):

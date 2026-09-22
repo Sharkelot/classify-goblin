@@ -1,7 +1,7 @@
-"""JEV-MM-13: bounded audio adapter — fail-closed, no fake success metrics.
+"""CG-MM-13: bounded audio adapter — fail-closed, no fake success metrics.
 
 The local Qwen endpoint rejects all audio parts (limit 0) and has no
-transcription route (JEV-MM-13 live probe, 2026-09-21). Audio is therefore
+transcription route (CG-MM-13 live probe, 2026-09-21). Audio is therefore
 fail-closed: every path returns an explicit, stable ``unavailable`` result
 with a documented reason. The adapter boundary (sample-rate, duration,
 channel, byte, and chunk limits) is still enforced so a future verified
@@ -13,9 +13,9 @@ import unittest
 import wave
 import io
 
-from jev_laya_free.artifacts import ResolvedArtifact
-from jev_laya_free.multimodal import prepare_audio
-from jev_laya_free.multimodal.audio import AudioLimits
+from classify_goblin.artifacts import ResolvedArtifact
+from classify_goblin.multimodal import prepare_audio
+from classify_goblin.multimodal.audio import AudioLimits
 
 
 def _wav_bytes(seconds=0.1, rate=8000, channels=1):

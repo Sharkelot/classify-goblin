@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # --- Training surfaces that must be ABSENT from the release ---
 TRAINING_PREFIXES = (
-    "src/jev_laya_free/training/",
+    "src/classify_goblin/training/",
     "data/capability-benchmark/",
     "data/capability-benchmark-full/",
 )
@@ -50,27 +50,28 @@ TRAINING_REPORTS = (
     "reports/evaluation.json",
     "reports/evaluation_calibrated.json",
     "reports/final-capabilities.json",
-    "reports/jev-comparison.json",
-    "reports/jev-comparison.md",
+    "reports/classify-goblin-comparison.json",
+    "reports/classify-goblin-comparison.md",
     "reports/predictions.jsonl",
 )
 
 # --- Runtime surfaces that must be PRESENT ---
 RUNTIME_REQUIRED = (
-    "src/jev_laya_free/server.py",
-    "src/jev_laya_free/client.py",
-    "src/jev_laya_free/schema.py",
-    "src/jev_laya_free/workflow.py",
-    "src/jev_laya_free/artifacts.py",
-    "src/jev_laya_free/taxonomy.py",
-    "src/jev_laya_free/protocol.py",
-    "src/jev_laya_free/protocol_client.py",
-    "src/jev_laya_free/reference_service.py",
-    "src/jev_laya_free/checkpoint.py",
-    "src/jev_laya_free/cli.py",
-    "src/jev_laya_free/distilbert_model.py",
-    "src/jev_laya_free/multimodal/",
-    "src/jev_laya_free/profile_assessor/",
+    "src/classify_goblin/server.py",
+    "src/classify_goblin/client.py",
+    "src/classify_goblin/schema.py",
+    "src/classify_goblin/workflow.py",
+    "src/classify_goblin/artifacts.py",
+    "src/classify_goblin/taxonomy.py",
+    "src/classify_goblin/protocol.py",
+    "src/classify_goblin/protocol_client.py",
+    "src/classify_goblin/reference_service.py",
+    "src/classify_goblin/checkpoint.py",
+    "src/classify_goblin/settings.py",
+    "src/classify_goblin/cli.py",
+    "src/classify_goblin/distilbert_model.py",
+    "src/classify_goblin/multimodal/",
+    "src/classify_goblin/profile_assessor/",
     "examples/client.py",
     "examples/request.json",
     "fixtures/benchmark-smoke.jsonl",
@@ -89,7 +90,7 @@ def _git_ls_files():
 
 def _installed_paths():
     """Install the package (no extras) into a fresh venv from a clean copy of the
-    source tree and return the installed ``jev_laya_free`` file paths.
+    source tree and return the installed ``classify_goblin`` file paths.
 
     The source tree is copied to a temp dir (excluding build artifacts, ``.git``,
     and ``__pycache__``) so the wheel is built from ``src/`` only — never from a
@@ -102,7 +103,7 @@ def _installed_paths():
 
     with tempfile.TemporaryDirectory() as d:
         # Layout the clean source tree as the package expects:
-        #   <d>/pyproject.toml  <d>/src/jev_laya_free/...
+        #   <d>/pyproject.toml  <d>/src/classify_goblin/...
         # so setuptools' [tool.setuptools.packages.find] where = ["src"] resolves.
         pkg_root = Path(d)
         (pkg_root / "src").mkdir()
@@ -137,7 +138,7 @@ def _installed_paths():
         site_dirs = list(site.glob("python*/site-packages"))
         if not site_dirs:
             return None
-        pkg = site_dirs[0] / "jev_laya_free"
+        pkg = site_dirs[0] / "classify_goblin"
         if not pkg.exists():
             return None
         return {
@@ -171,26 +172,27 @@ class ReleaseSurfaceTests(unittest.TestCase):
         installed = _installed_paths()
         if installed is None:
             self.skipTest("fresh venv install unavailable")
-        # installed paths are relative to site-packages: jev_laya_free/...
-        for prefix in ("jev_laya_free/training/",):
+        # installed paths are relative to site-packages: classify_goblin/...
+        for prefix in ("classify_goblin/training/",):
             for p in installed:
                 if p.startswith(prefix):
                     self.fail(f"installed: training path present: {p}")
         for f in (
-            "jev_laya_free/server.py",
-            "jev_laya_free/client.py",
-            "jev_laya_free/schema.py",
-            "jev_laya_free/workflow.py",
-            "jev_laya_free/artifacts.py",
-            "jev_laya_free/taxonomy.py",
-            "jev_laya_free/protocol.py",
-            "jev_laya_free/checkpoint.py",
-            "jev_laya_free/cli.py",
-            "jev_laya_free/distilbert_model.py",
+            "classify_goblin/server.py",
+            "classify_goblin/client.py",
+            "classify_goblin/schema.py",
+            "classify_goblin/workflow.py",
+            "classify_goblin/artifacts.py",
+            "classify_goblin/taxonomy.py",
+            "classify_goblin/protocol.py",
+            "classify_goblin/checkpoint.py",
+            "classify_goblin/settings.py",
+            "classify_goblin/cli.py",
+            "classify_goblin/distilbert_model.py",
         ):
             if f not in installed:
                 self.fail(f"installed: required runtime surface missing: {f}")
-        for f in ("jev_laya_free/multimodal/", "jev_laya_free/profile_assessor/"):
+        for f in ("classify_goblin/multimodal/", "classify_goblin/profile_assessor/"):
             if not any(p.startswith(f) for p in installed):
                 self.fail(f"installed: required runtime surface missing: {f}")
 
@@ -199,13 +201,13 @@ class ReleaseSurfaceTests(unittest.TestCase):
 
 CONSUMER_DOCS = (
     "README.md",
-    "src/jev_laya_free/multimodal/README.md",
+    "src/classify_goblin/multimodal/README.md",
 )
 
 # Executable training/data-generation instructions that must never appear in
 # consumer documentation, with or without context.
 ALWAYS_BANNED = (
-    r"python\s*-m\s*jev_laya_free\.training",
+    r"python\s*-m\s*classify_goblin\.training",
     r"hf\s+download",
     r"Hugging\s+Face",
     r"requirements-training\.txt",
@@ -218,14 +220,14 @@ ALWAYS_BANNED = (
     r"--include-synthetic",
     r"--public-dataset",
     r"--local-traces",
-    r"JEV_DATA_DIR",
-    r"JEV_MODEL_DIR",
+    r"CLASSIFY_GOBLIN_DATA_DIR",
+    r"CLASSIFY_GOBLIN_MODEL_DIR",
     r"reports/final-capabilities\.json",
     r"reports/calibration-capability\.json",
     r"reports/calibration\.json",
     r"reports/evaluation_calibrated\.json",
     r"reports/evaluation\.json",
-    r"reports/jev-comparison\.(md|json)",
+    r"reports/classify-goblin-comparison\.(md|json)",
     r"reports/predictions\.jsonl",
     r"reports/synthetic\.json",
 )
@@ -234,7 +236,7 @@ ALWAYS_BANNED = (
 # carries an explicit "not shipped / does not exist / separate environment"
 # limitation marker.
 CONTEXT_GATED = (
-    r"jev_laya_free\.trainer",
+    r"classify_goblin\.trainer",
     r"\btrainer\b",
 )
 
@@ -248,16 +250,16 @@ ALLOW_MARKERS = (
     "no in-repo training command",
 )
 
-# Required README surfaces (acceptance: Goblin JEV branding + consumer guidance).
+# Required README surfaces (acceptance: classify-goblin branding + consumer guidance).
 README_REQUIRED = (
-    "# Goblin JEV",
-    "goblin-jev download-checkpoint",
+    "# classify-goblin",
+    "classify-goblin download-checkpoint",
     "scripts/benchmark.py --backend offline",
-    "JEV_LOCAL_API_KEY",
-    "JEV_ARTIFACT_ROOTS",
+    "CLASSIFY_GOBLIN_LOCAL_API_KEY",
+    "CLASSIFY_GOBLIN_ARTIFACT_ROOTS",
     "/v1/systemone",
-    "jev-laya-free",
-    "from jev_laya_free import",
+    "classify-goblin",
+    "from classify_goblin import",
     "## Limitations",
     "modality",
     "pip install .",
@@ -295,13 +297,13 @@ class StaleTrainingDocsTests(unittest.TestCase):
                                 f"{pattern!r} without a limitation marker: {line}"
                             )
 
-    def test_readme_leads_with_goblin_jev_branding_and_consumer_surfaces(self):
+    def test_readme_leads_with_classify_goblin_branding_and_consumer_surfaces(self):
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         first_heading = next(
             (line for line in text.splitlines() if line.strip().startswith("# ")),
             "",
         )
-        self.assertEqual(first_heading, "# Goblin JEV")
+        self.assertEqual(first_heading, "# classify-goblin")
         for required in README_REQUIRED:
             self.assertIn(required, text)
 

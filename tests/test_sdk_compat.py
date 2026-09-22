@@ -8,7 +8,7 @@ from typesafe_sdk import (
     AsyncTypeSafeClient, Choice, Noul, Score, TypeSafeClient,
     ClientError, ValidationError,
 )
-from jev_laya_free import schema
+from classify_goblin import schema
 from test_contract import running, post
 
 
@@ -61,8 +61,8 @@ class ShimTests(unittest.TestCase):
             self.assertEqual(client.url, 'http://127.0.0.1:8093/v1/systemone')
             self.assertEqual(client.model, 'local-default')
         with patch.dict(os.environ, {'TYPESAFE_BASE_URL': 'https://api.typesafe.ai',
-                                    'TYPESAFE_API_KEY': 'compat', 'JEV_LOCAL_API_KEY': 'local',
-                                    'TYPESAFE_DEFAULT_MODEL': 'jev-latest'}, clear=True):
+                                    'TYPESAFE_API_KEY': 'compat', 'CLASSIFY_GOBLIN_LOCAL_API_KEY': 'local',
+                                    'TYPESAFE_DEFAULT_MODEL': 'classify-goblin-latest'}, clear=True):
             with self.assertRaises(ValidationError):
                 TypeSafeClient()
             client = TypeSafeClient(base_url='http://localhost:8093')
@@ -70,18 +70,27 @@ class ShimTests(unittest.TestCase):
             self.assertEqual(client.model, 'local-default')
             self.assertEqual(TypeSafeClient(base_url='http://localhost', api_key='explicit').api_key, 'explicit')
 
+    def test_legacy_local_api_key_is_only_a_fallback(self):
+        with patch.dict(os.environ, {'JEV_LOCAL_API_KEY': 'legacy'}, clear=True):
+            self.assertEqual(TypeSafeClient().api_key, 'legacy')
+        with patch.dict(os.environ, {
+            'JEV_LOCAL_API_KEY': 'legacy',
+            'CLASSIFY_GOBLIN_LOCAL_API_KEY': 'current',
+        }, clear=True):
+            self.assertEqual(TypeSafeClient().api_key, 'current')
+
     def test_required_wire_model_and_hosted_model_rejection(self):
         with running() as (server, url):
             status, body = post(server, schema.dumps({'state': '', 'questions': questions()}))
             self.assertEqual(status, 422)
             self.assertNotIn('answers', body)
             with self.assertRaises(ClientError) as cm:
-                TypeSafeClient(base_url=url, retries=0).system_one(state='', questions=questions(), model='jev-latest')
+                TypeSafeClient(base_url=url, retries=0).system_one(state='', questions=questions(), model='classify-goblin-latest')
             self.assertEqual(cm.exception.status, 422)
             async def run():
                 async with AsyncTypeSafeClient(base_url=url, retries=0) as client:
                     with self.assertRaises(ClientError) as cm:
-                        await client.system_one(state='', questions=questions(), model='jev-latest')
+                        await client.system_one(state='', questions=questions(), model='classify-goblin-latest')
                     self.assertEqual(cm.exception.status, 422)
             asyncio.run(run())
 

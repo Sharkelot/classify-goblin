@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jev-laya-free"
+name = "classify-goblin"
 version = "0.2.0"
 description = "Independent local typed-decision HTTP implementation with optional Laya backend"
 requires-python = ">=3.10"
@@ -20,8 +20,9 @@ test = [
 ]
 
 [project.scripts]
-jev-laya-free = "jev_laya_free.server:main"
-goblin-jev = "jev_laya_free.cli:main"
+classify-goblin = "classify_goblin.cli:main"
+classify-goblin-server = "classify_goblin.server:main"
+classify-goblin-profile-assessor = "classify_goblin.profile_assessor.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

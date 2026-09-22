@@ -1,6 +1,6 @@
 """No service required. Qwen remains responsible for executing the route."""
 import json
-from jev_laya_free.workflow import decide
+from classify_goblin.workflow import decide
 
 state = {
     'modality': 'pdf', 'source_digest': 'synthetic-document-hash', 'location': 'page 2',

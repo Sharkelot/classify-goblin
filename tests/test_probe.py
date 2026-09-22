@@ -1,7 +1,7 @@
 """Capability probe and versioned modality manifest (V1/V2)."""
 import unittest
 
-from jev_laya_free.multimodal import probe as probe_mod
+from classify_goblin.multimodal import probe as probe_mod
 
 
 class ProbeTests(unittest.TestCase):
@@ -16,7 +16,7 @@ class ProbeTests(unittest.TestCase):
             self.assertIn(state['state'], ('verified', 'unavailable', 'not_verified'))
 
     def test_local_observations_from_probe_report(self):
-        # JEV-MM-01 local observations (not upstream claims).
+        # CG-MM-01 local observations (not upstream claims).
         manifest = probe_mod.default_manifest()
         caps = manifest['capabilities']
         self.assertEqual(caps['text']['state'], 'verified')

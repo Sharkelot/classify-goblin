@@ -1,4 +1,4 @@
-"""Unit tests for the profile assessor (JEV-MM-11).
+"""Unit tests for the profile assessor (CG-MM-11).
 
 Covers: deterministic filters F1-F7 (pass and fail paths), verdict rules,
 tie-breaking determinism, revalidation + fallback chain, the pure profile-dir
@@ -11,14 +11,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jev_laya_free.profile_assessor import (
+from classify_goblin.profile_assessor import (
     RosterSnapshot,
     assess,
     parse_profile_dir,
     revalidate,
 )
-from jev_laya_free.profile_assessor.filters import filter_chain
-from jev_laya_free.profile_assessor.schema import AssessmentRequest
+from classify_goblin.profile_assessor.filters import filter_chain
+from classify_goblin.profile_assessor.schema import AssessmentRequest
 
 FIX = Path(__file__).parent / 'fixtures' / 'profile_assessor'
 
@@ -314,7 +314,7 @@ class RevalidateTests(unittest.TestCase):
             tuple(a for a in snap.valid_assignees
                   if a != 'developer-goblin'),
             '2026-09-21T01:00:00Z', snap.digest)
-        from jev_laya_free.profile_assessor.revalidation import first_valid_candidate
+        from classify_goblin.profile_assessor.revalidation import first_valid_candidate
         chosen = first_valid_candidate(result['candidates'], fresh)
         self.assertEqual(chosen, 'video-review-goblin')
 
@@ -324,7 +324,7 @@ class RevalidateTests(unittest.TestCase):
         result = assess(req, snap)
         fresh = RosterSnapshot(tuple(), tuple(), '2026-09-21T01:00:00Z',
                               snap.digest)
-        from jev_laya_free.profile_assessor.revalidation import first_valid_candidate
+        from classify_goblin.profile_assessor.revalidation import first_valid_candidate
         self.assertIsNone(first_valid_candidate(result['candidates'], fresh))
 
 

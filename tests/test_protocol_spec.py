@@ -6,7 +6,7 @@ validated against the same contract.
 """
 import math
 import unittest
-from jev_laya_free import protocol
+from classify_goblin import protocol
 
 
 class ConstantTests(unittest.TestCase):
